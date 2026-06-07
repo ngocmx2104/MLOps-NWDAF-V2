@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+artifacts/
+mlruns/
+mlartifacts/
+*.joblib
+.dvc/cache/
+.dvc/tmp/
+.env
+reports/
