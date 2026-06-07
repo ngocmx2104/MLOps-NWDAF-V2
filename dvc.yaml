@@ -32,3 +32,20 @@ stages:
       - src/data/generate_datasets.py
     outs:
       - artifacts/synthetic/raw_ebs
+
+  d2_features:
+    cmd: python -m src.features.cli build-d2 --output artifacts/features
+    deps:
+      - artifacts/snapshots
+      - src/features/builder.py
+      - src/features/schema.py
+    outs:
+      - artifacts/features
+
+  weak_labels:
+    cmd: python -m src.features.cli weak-label --output artifacts/features_labeled
+    deps:
+      - artifacts/features
+      - src/features/weak_labels.py
+    outs:
+      - artifacts/features_labeled

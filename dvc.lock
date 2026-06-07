@@ -11,13 +11,13 @@ stages:
       nfiles: 3
     - path: src/ingestion
       hash: md5
-      md5: 3c92ce1179c16dcca8f18634106fc4e6.dir
+      md5: 920cfcfb8af64ea0bed89125502a6249.dir
       size: 76352
       nfiles: 13
     outs:
     - path: artifacts/snapshots
       hash: md5
-      md5: 81d37a7205a0c6f7b673208e6e68674d.dir
+      md5: e2c8bd5dfbb87d04640bb03db5ebd843.dir
       size: 1138241
       nfiles: 2
   profile:
@@ -56,3 +56,44 @@ stages:
       md5: 81381cffaa72d2fdcedadd660dc55df7.dir
       size: 610293
       nfiles: 14
+  d2_features:
+    cmd: python -m src.features.cli build-d2 --output artifacts/features
+    deps:
+    - path: artifacts/snapshots
+      hash: md5
+      md5: e2c8bd5dfbb87d04640bb03db5ebd843.dir
+      size: 1138241
+      nfiles: 2
+    - path: src/features/builder.py
+      hash: md5
+      md5: b74e21f75a0ba57f967c721c93a114cc
+      size: 9973
+    - path: src/features/schema.py
+      hash: md5
+      md5: c007d04d2edc1e24626837e5eba5ba4d
+      size: 3636
+    outs:
+    - path: artifacts/features
+      hash: md5
+      md5: f35e1e213a6b518f4cc585e73dd7e175.dir
+      size: 184546
+      nfiles: 2
+  weak_labels:
+    cmd: python -m src.features.cli weak-label --output 
+      artifacts/features_labeled
+    deps:
+    - path: artifacts/features
+      hash: md5
+      md5: f35e1e213a6b518f4cc585e73dd7e175.dir
+      size: 184546
+      nfiles: 2
+    - path: src/features/weak_labels.py
+      hash: md5
+      md5: 6f97461a3c031e4bd9ef1cd0f50738f7
+      size: 8008
+    outs:
+    - path: artifacts/features_labeled
+      hash: md5
+      md5: c61ffafeb25dd1673d17bf7e4bd15566.dir
+      size: 186853
+      nfiles: 2
