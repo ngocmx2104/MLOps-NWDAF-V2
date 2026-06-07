@@ -1,0 +1,6 @@
+outs:
+- md5: c4e4737f97da90d3d68357861611cb02.dir
+  size: 66665278
+  nfiles: 3
+  hash: md5
+  path: raw_ebs

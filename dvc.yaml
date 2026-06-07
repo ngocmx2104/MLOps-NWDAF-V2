@@ -1,0 +1,9 @@
+stages:
+  snapshot:
+    cmd: python -m src.ingestion.cli build-snapshot --output-dir artifacts/snapshots
+      data/raw_ebs/*_ebs
+    deps:
+      - data/raw_ebs
+      - src/ingestion
+    outs:
+      - artifacts/snapshots

@@ -11,4 +11,9 @@ mlartifacts/
 reports/
 *.egg-info/
 *.egg-link
-data/
+# Data files are DVC-tracked; the .dvc pointer files are committed to git.
+# We ignore the raw data files but NOT the directory itself,
+# so that git can see data/*.dvc pointer files and data/.gitignore.
+data/raw_ebs/
+data/features/
+data/processed/

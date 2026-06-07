@@ -1,0 +1,22 @@
+schema: '2.0'
+stages:
+  snapshot:
+    cmd: python -m src.ingestion.cli build-snapshot --output-dir 
+      artifacts/snapshots data/raw_ebs/*_ebs
+    deps:
+    - path: data/raw_ebs
+      hash: md5
+      md5: c4e4737f97da90d3d68357861611cb02.dir
+      size: 66665278
+      nfiles: 3
+    - path: src/ingestion
+      hash: md5
+      md5: 3c92ce1179c16dcca8f18634106fc4e6.dir
+      size: 76352
+      nfiles: 13
+    outs:
+    - path: artifacts/snapshots
+      hash: md5
+      md5: 81d37a7205a0c6f7b673208e6e68674d.dir
+      size: 1138241
+      nfiles: 2
