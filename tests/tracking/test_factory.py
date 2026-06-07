@@ -16,3 +16,8 @@ def test_env_var_selects_backend(monkeypatch):
 def test_unknown_backend_raises():
     with pytest.raises(ValueError, match="Unknown"):
         create_tracker("nope")
+
+
+def test_case_insensitive_backend():
+    assert isinstance(create_tracker("NOOP"), NoopTracker)
+    assert isinstance(create_tracker("Noop"), NoopTracker)
