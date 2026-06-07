@@ -20,3 +20,39 @@ stages:
       md5: 81d37a7205a0c6f7b673208e6e68674d.dir
       size: 1138241
       nfiles: 2
+  profile:
+    cmd: python -m src.data.real_profile --ebs-dir data/raw_ebs --output 
+      artifacts/synthetic/profile.json
+    deps:
+    - path: data/raw_ebs
+      hash: md5
+      md5: c4e4737f97da90d3d68357861611cb02.dir
+      size: 66665278
+      nfiles: 3
+    - path: src/data/real_profile.py
+      hash: md5
+      md5: b38fe965fed1453e2d817df54eb3fafb
+      size: 11901
+    outs:
+    - path: artifacts/synthetic/profile.json
+      hash: md5
+      md5: c0a600c2b4360a9ff5b719866d586bbd
+      size: 63579
+  features:
+    cmd: python -m src.data.generate_datasets features --output 
+      artifacts/synthetic
+    deps:
+    - path: src/data/generate_datasets.py
+      hash: md5
+      md5: 73b68c5d4ec3eecef963e24fb7bbe9e3
+      size: 6991
+    - path: src/data/synthetic_generator.py
+      hash: md5
+      md5: a91ff7acaeaa57d7f87f8bceb6876782
+      size: 12178
+    outs:
+    - path: artifacts/synthetic/features
+      hash: md5
+      md5: 81381cffaa72d2fdcedadd660dc55df7.dir
+      size: 610293
+      nfiles: 14

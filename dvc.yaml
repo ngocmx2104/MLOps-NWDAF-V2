@@ -7,3 +7,28 @@ stages:
       - src/ingestion
     outs:
       - artifacts/snapshots
+
+  profile:
+    cmd: python -m src.data.real_profile --ebs-dir data/raw_ebs --output artifacts/synthetic/profile.json
+    deps:
+      - data/raw_ebs
+      - src/data/real_profile.py
+    outs:
+      - artifacts/synthetic/profile.json
+
+  features:
+    cmd: python -m src.data.generate_datasets features --output artifacts/synthetic
+    deps:
+      - src/data/synthetic_generator.py
+      - src/data/generate_datasets.py
+    outs:
+      - artifacts/synthetic/features
+
+  raw_data:
+    cmd: python -m src.data.generate_datasets raw --output artifacts/synthetic --profile artifacts/synthetic/profile.json
+    deps:
+      - artifacts/synthetic/profile.json
+      - src/data/ebs_generator.py
+      - src/data/generate_datasets.py
+    outs:
+      - artifacts/synthetic/raw_ebs
