@@ -12,7 +12,9 @@ dependencies = [
 ]
 [project.optional-dependencies]
 feast = ["feast>=0.40"]
-lstm = ["tensorflow>=2.16"]
+# WARNING: TensorFlow has no cp314 wheels — [lstm] is skipped on Python 3.14.
+# Phase 4 (LSTM-AE) needs a Python 3.12/3.13 venv until TF ships 3.14 wheels.
+lstm = ["tensorflow>=2.16,<2.21 ; python_version < '3.14'"]
 clearml = ["clearml>=1.16"]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.6", "pre-commit>=3.8"]
 

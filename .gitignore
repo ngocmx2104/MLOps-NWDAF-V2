@@ -9,3 +9,6 @@ mlartifacts/
 .dvc/tmp/
 .env
 reports/
+*.egg-info/
+*.egg-link
+data/
