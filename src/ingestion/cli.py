@@ -22,23 +22,20 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from pathlib import Path
 
-# Ensure project root is on sys.path so ``src.`` imports work
-_project_root = Path(__file__).resolve().parents[2]
-if str(_project_root) not in sys.path:
-    sys.path.insert(0, str(_project_root))
-
-from src.ingestion.parser import normalize_timestamps, parse_ebs_files  # noqa: E402
-from src.ingestion.quality import (  # noqa: E402
+from src.ingestion.parser import normalize_timestamps, parse_ebs_files
+from src.ingestion.quality import (
     format_quality_report,
     run_d1_quality_checks,
     run_raw_quality_checks,
 )
-from src.ingestion.snapshot import build_d1_snapshot  # noqa: E402
+from src.ingestion.snapshot import build_d1_snapshot
 
 logger = logging.getLogger("src.ingestion")
+
+# Project root (used for default paths only — not for sys.path manipulation)
+_project_root = Path(__file__).resolve().parents[2]
 
 # Default raw EBS file locations (relative to project root)
 _DATA_DIR = _project_root / "data" / "raw_ebs"
