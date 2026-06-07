@@ -13,8 +13,8 @@ Workspace cho **luận văn thạc sĩ (UET-VNU)** của **Mai Xuân Ngọc** (M
 - **Tên đề tài:** *Nghiên cứu và xây dựng quy trình MLOps trong hệ thống phân tích dữ liệu mạng lõi di động thế hệ thứ 5.*
 - **Hướng (ĐÃ CHỐT, thầy Hiếu duyệt):** **Ứng dụng** — *thật sự xây dựng & vận hành* một pipeline MLOps end-to-end cho bài toán 5G NWDAF, rồi **đo lường có đối chứng** giá trị nó mang lại. KHÔNG phải xây "khung đánh giá MLOps tổng quát".
 - **Use case khóa cứng:** Phát hiện bất thường **ping-pong handover** của UE (thuê bao chuyển giao qua lại liên tục giữa 2 cell) từ dữ liệu **EBS** (Event-Based Statistics) của NWDAF.
-- **Trạng thái:** Workspace **mới, gần như trống** — code đang được build/migrate có chọn lọc từ repo cũ. Mục §5 mô tả **kiến trúc MỤC TIÊU**, chưa phải code đã có.
-- **Deadline:** +2 tháng (gia hạn đã duyệt) tính từ 2026-06.
+- **Trạng thái:** Workspace **mới**. Chủ trương: **build fresh theo `docs/THESIS_SPEC.md`**, chỉ *tái dùng có chọn lọc* logic đã kiểm chứng từ repo cũ (xem §8). Mục §5 mô tả **kiến trúc MỤC TIÊU**.
+- **Thời gian:** **KHÔNG còn ràng buộc cứng** — ưu tiên *hoàn chỉnh & đúng* hơn là cắt giảm cho kịp. Git đã `init` + add remote.
 
 ---
 
@@ -54,7 +54,7 @@ Mỗi dòng code phải truy về được một trong các trục sau.
 
 **Thiết kế thực nghiệm có đối chứng (ĐÃ CHỐT — chi tiết: `docs/research/METHODOLOGY_GROUNDING.md` §B, và `docs/THESIS_SPEC.md`):**
 - **Trục 1 — Capability ablation (xương sống):** **C0 (không MLOps)** → **C1 (full MLOps trên MLflow)** cho cùng bài toán handover, cùng data/model/code. C0 là pipeline bị *gỡ* lớp MLOps, KHÔNG phải hệ tự dựng yếu → tránh phê bình "straw-man". Đo cả 6 nhóm metrics; khung theo Google maturity L0→L1(→L2).
-- **Trục 2 — So sánh framework (phụ, thỏa thầy Trình):** Noop / **MLflow (chính)** / ClearML ở **lát tracking-registry** qua `BaseTracker`; đo overhead/resource/governance, ML metrics giữ trùng. Vai trò = *biện minh chọn MLflow*. **Kubeflow = literature** (đòi K8s). KHÔNG dựng full stack trên ClearML.
+- **Trục 2 — So sánh framework (phụ, thỏa thầy Trình):** Noop / **MLflow (chính)** / ClearML ở **lát tracking-registry** qua `BaseTracker`; đo overhead/resource/governance, ML metrics giữ trùng. Vai trò = *biện minh chọn MLflow*. KHÔNG dựng full stack trên ClearML. **Kubeflow** = literature + hướng phát triển (ĐÃ CHỐT: core single-node, không đưa K8s vào phạm vi chính).
 - **Maturity đo khách quan:** **ML Test Score (Breck et al. 2017)** — 28 test × {0 / 0.5 manual / 1 automated}, lấy MIN 4 mục; triangulate Google L0–2 & Azure L0–4 dạng tiêu chí present/absent. KHÔNG tự gán điểm.
 - **ATAM/utility-tree:** chỉ để *chọn* thuộc tính cần đo, KHÔNG báo cáo điểm gán tay làm kết quả.
 - **Giao thức:** N≥10 runs, fixed seeds, loại warmup, **Wilcoxon signed-rank** (α=0.05), raw JSONL, báo cáo mean±std + CI.
@@ -88,10 +88,10 @@ EBS files (real + synthetic)
   → CI/CD              GitHub Actions (+ self-hosted runner): feature → train → serve/deploy
 ```
 
-**Phạm vi stack (ĐÃ CHỐT — ánh xạ 8 thành phần Kreuzberger; chi tiết `docs/research/METHODOLOGY_GROUNDING.md` §C):**
-- **BẮT BUỘC:** MLflow (C5 registry + C6 metadata) · FastAPI (C7 serving) · Docker Compose · GitHub Actions (C1 CI/CD) · Evidently + Prometheus/Grafana (C8 monitoring) · DVC (C3-lite data versioning EBS).
-- **BỎ — phải biện minh trong luận văn:** Feast (C3 — overkill cho 1 use case) · Kubeflow (C2/C4 — đòi K8s, chỉ literature).
-- **C2 orchestration:** làm nhẹ (`python -m` CLI / Makefile), không engine nặng.
+**Phạm vi stack (cập nhật — không còn ràng buộc thời gian → phủ ĐỦ 8/8 thành phần Kreuzberger; chi tiết `THESIS_SPEC.md` §5 + `docs/research/METHODOLOGY_GROUNDING.md` §C):**
+- **MLflow** (C5 registry + C6 metadata) · **DVC** (C3 data/model versioning EBS) · **Feast** (C3 feature store — online/offline phục vụ AnLF real-time vs MTLF batch, train/serve consistency) · **FastAPI + Docker** (C7 serving) · **Evidently + Prometheus/Grafana** (C8 monitoring) · **GitHub Actions** (C1 CI/CD).
+- **C2 orchestration:** DVC pipelines (`dvc.yaml` DAG) + GitHub Actions; nâng cấp orchestrator chuyên dụng nếu cần.
+- **Kubeflow/Kubernetes (ĐÃ CHỐT: A):** literature + hướng phát triển; KHÔNG đưa K8s vào core.
 - **Drift:** PSI 3 tầng + KS qua Evidently (nhãn thưa → KHÔNG dùng detector có giám sát). **Eval:** ROC-AUC + PR-AUC; F1 chỉ ở ngưỡng cố định, có biện minh.
 
 **Nguyên tắc thiết kế (giữ từ bản tốt của repo cũ):**
@@ -134,7 +134,7 @@ docker compose up ...                       # serving API / monitoring stack
 ## 8. Nguồn tham chiếu (repo cũ — đọc, đừng copy mù)
 
 Repo cũ ở `/Users/ngocmx/Thạc Sĩ/MLOps_Project/`:
-- `src/` — code lõi canonical (~8.3K dòng): ingestion, features, training (IForest+LSTM), serving (FastAPI), monitoring (PSI), tracking abstraction (Noop/ClearML/MLflow), experiments. **Migrate có chọn lọc.**
+- `src/` — code lõi canonical (~8.3K dòng): ingestion, features, training (IForest+LSTM), serving (FastAPI), monitoring (PSI), tracking abstraction (Noop/ClearML/MLflow), experiments. **Build fresh + tái dùng có chọn lọc** logic đã kiểm chứng (parser, feature compute, weak labels, PSI, IForest/LSTM, mẫu `BaseTracker`) — re-implement sạch, không bê nguyên.
 - `docs/MASTER_THESIS_BACKBONE.md` — north star bản refactor #1 (RQ, anti-patterns).
 - `vietnamese_thesis_style_guide.md` — văn phong luận văn.
 - `Template_thesis_master/` — LaTeX template UET-VNU.
