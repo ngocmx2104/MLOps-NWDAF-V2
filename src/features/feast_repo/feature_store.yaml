@@ -1,0 +1,7 @@
+project: nwdaf_handover
+provider: local
+registry: registry.db
+online_store:
+  type: sqlite
+  path: online_store.db
+entity_key_serialization_version: 3
