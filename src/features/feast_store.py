@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
-from feast import Entity, FeatureStore, FeatureView, Field, FileSource
+from feast import Entity, FeatureStore, FeatureView, Field, FileSource, ValueType
 from feast.types import Float64, Int64
 
 FEATURE_NAMES = [
@@ -26,7 +26,7 @@ FEATURE_REFS = [f"handover_features:{n}" for n in FEATURE_NAMES]
 
 def build_definitions(source_parquet: str) -> list:
     """Build the Feast Entity + FeatureView for a given source parquet."""
-    imsi = Entity(name="imsi", join_keys=["imsi"])
+    imsi = Entity(name="imsi", join_keys=["imsi"], value_type=ValueType.STRING)
     source = FileSource(
         name="handover_feature_source",
         path=str(source_parquet),
