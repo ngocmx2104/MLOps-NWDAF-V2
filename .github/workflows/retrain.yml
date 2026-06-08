@@ -1,0 +1,35 @@
+name: Continuous Training (retrain)
+on:
+  schedule:
+    - cron: "0 3 * * 1"   # weekly Monday 03:00 UTC (demo cadence)
+  workflow_dispatch:
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+      - run: pip install -e ".[dev,feast]"
+      - name: Generate fixture reference + predictions, run retrain cycle
+        run: |
+          python -m src.cicd fixture --output artifacts/cicd/ref.parquet
+          python - <<'PY'
+          # minimal predictions.jsonl from the fixture so the cycle has an observation window
+          import json, pandas as pd
+          from pathlib import Path
+          df = pd.read_parquet("artifacts/cicd/ref.parquet")
+          feats = [c for c in df.columns if c not in ("imsi","window_start","label","weak_label")]
+          Path("artifacts/cicd").mkdir(parents=True, exist_ok=True)
+          with open("artifacts/cicd/predictions.jsonl","w") as f:
+              for _,r in df.iterrows():
+                  f.write(json.dumps({"feature_values":{k:float(r[k]) for k in feats},
+                                      "anomaly_score":0.5,"latency_ms":1.0})+"\n")
+          PY
+          python -m src.monitoring retrain \
+            --predictions artifacts/cicd/predictions.jsonl \
+            --reference artifacts/cicd/ref.parquet \
+            --dataset artifacts/cicd/ref.parquet \
+            --output-dir artifacts/cicd/retrain --backend noop
