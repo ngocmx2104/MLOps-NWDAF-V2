@@ -1,7 +1,7 @@
 # HANDOFF — Luận văn MLOps NWDAF (bàn giao cho agent session khác)
 
 > **Mục đích:** Bản tổng hợp đầy đủ để một AI agent ở session khác **nắm bối cảnh + bắt tay làm tiếp ngay**. Đọc file này TRƯỚC, rồi đọc `CLAUDE.md` (luật repo, auto-load) + `docs/THESIS_SPEC.md` (spec) + `docs/IMPLEMENTATION_PLAN.md` (roadmap).
-> **Cập nhật:** 2026-06-08. **Tiến độ:** 3/9 phase đã merge vào `main`; Phase 4 đang dở (T1–T3 xong, T4–T7 còn lại).
+> **Cập nhật:** 2026-06-08. **Tiến độ:** P0–P3 merged; **P4 (Training) HOÀN TẤT** trên branch `phase4-training` — T1–T7 xong, **65 test xanh**, đã qua per-task review + final whole-phase review (opus): READY TO MERGE, **chờ HV duyệt merge**. Kế tiếp: P5 (Serving).
 
 ---
 
@@ -10,8 +10,8 @@
 - Đây là **luận văn thạc sĩ MLOps cho 5G NWDAF** (phát hiện ping-pong handover), hướng **ứng dụng** — xây pipeline MLOps end-to-end thật + **đo lường có đối chứng** giá trị MLOps. KHÔNG phải "khung đánh giá MLOps tổng quát" (bản cũ bị hội đồng đánh trượt vì điều đó).
 - **Đang build fresh** theo 10 phase (P0→P9), **subagent-driven** (mỗi task: implementer → spec review → quality review → fix → merge). Port logic đã kiểm chứng từ repo cũ `/Users/ngocmx/Thạc Sĩ/MLOps_Project/src/`.
 - **Đã xong & merge `main`:** P0 (scaffold + tracking abstraction), P1 (ingestion + DVC snapshot), P2 (synthetic data + DVC profile/features), P3 (features + **Feast** feature store C3).
-- **Đang làm:** P4 (Training + MLflow/ClearML trackers). T1–T3 xong (PyTorch deps, MLflowTracker registry thật, ClearMLTracker). **Việc tiếp theo NGAY:** T4 (port IForest core + training data), T5 (PyTorch LSTM-AE), T6 (training pipeline + CLI), T7 (verify). Plan chi tiết: `docs/plans/2026-06-07-phase4-training-mlflow.md`.
-- **54 test xanh, ruff sạch.** Chạy `source .venv/bin/activate && pytest -q && ruff check .` (≈9s).
+- **P4 (Training) HOÀN TẤT** (branch `phase4-training`, chưa merge): training core (IForest port + PyTorch LSTM-AE), `run_training` = điểm điều khiển C0/C1/C2, MLflow/ClearML trackers registry thật. **Việc tiếp theo NGAY:** HV duyệt merge P4 → bắt đầu **P5 (Serving, C7)**: FastAPI `/predict` (lấy online feature Feast) + Docker, hot-reload/rollback. Plan P4: `docs/plans/2026-06-07-phase4-training-mlflow.md`.
+- **65 test xanh, ruff sạch.** Chạy `source .venv/bin/activate && pytest -q && ruff check .` (≈14s).
 
 ---
 
@@ -102,7 +102,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | **P1** | Data ingestion | C2,C3 | ✅ merged (parser/quality/snapshot/CLI + DVC `snapshot`) |
 | **P2** | Synthetic data | hỗ trợ | ✅ merged (real_profile/generators + DVC `profile`/`features`; `raw_data` defer) |
 | **P3** | Features + **Feast** | C3 | ✅ merged (builder/weak_labels + Feast C3 + DVC `d2_features`/`weak_labels`) |
-| **P4** | Training + MLflow/ClearML | C4,C5,C6 | 🟡 **đang làm** — T1–T3 xong, T4–T7 còn lại |
+| **P4** | Training + MLflow/ClearML | C4,C5,C6 | ✅ **xong (chưa merge)** — T1–T7, 65 test, final review OK |
 | **P5** | Serving | C7 | ⬜ chưa — FastAPI `/predict` (lấy online feature Feast) + Docker, hot-reload/rollback |
 | **P6** | Monitoring + auto-retrain | C8 | ⬜ chưa — PSI + Evidently + Prometheus/Grafana + drift→retrain |
 | **P7** | CI/CD | C1 | ⬜ chưa — GitHub Actions (feature→train→eval-gate→deploy) + **docker servers MLflow/ClearML** |
@@ -134,9 +134,9 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 
 ---
 
-## 8. PHASE 4 đang dở — chi tiết để làm tiếp
+## 8. PHASE 4 — HOÀN TẤT (chờ merge) — chi tiết
 
-**Branch `phase4-training`** (4 commit: `bda1b0d` torch deps, `b5045c8` MLflowTracker, `c1f2dd2` ClearMLTracker, `64abf4d` fix test ClearML; + `abb18df` track plan docs). **54 test xanh.**
+**Branch `phase4-training`** — T1–T7 xong, **65 test xanh, ruff sạch, tree sạch, CHƯA merge/push**. Commit code: `bda1b0d` torch deps · `b5045c8` MLflowTracker · `c1f2dd2` ClearMLTracker · `64abf4d` fix test ClearML · `6654b75` IForest core+data · `1564e03` PyTorch LSTM-AE · `688bfe3` pipeline+CLI (C0/C1/C2) · `8669a86` MLflow C1 smoke + distinct registry names · `39cb0ab` chore gitignore · `2cb7d4a` validate model_type + drift guard.
 
 **Plan đầy đủ:** `docs/plans/2026-06-07-phase4-training-mlflow.md` (đọc kỹ — có code/test cụ thể từng task).
 
@@ -145,35 +145,36 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 - **T2 — `src/tracking/mlflow_tracker.py`:** `MLflowTracker` khớp interface P0, **registry THẬT** (`mlflow.register_model` + `set_registered_model_alias`). Test dùng sqlite MLflow.
 - **T3 — `src/tracking/clearml_tracker.py`:** `ClearMLTracker` khớp interface, `OutputModel` registry. Test = subprocess offline (xem gotcha §4).
 
-### ⬜ CÒN LẠI (T4–T7) — làm tiếp NGAY theo plan
-- **T4 — Port training core:** `src/training/__init__.py`, `schema.py` (`TrainingConfig`, `FEATURE_COLUMNS`), `core.py` (`train_isolation_forest`), `data.py` (`apply_sliding_window`, `load_training_dataset`, `prepare_training_matrices`, `split_training_data`) — port verbatim từ `MLOps_Project/src/training/`. + tests.
-- **T5 — `src/training/lstm_detector.py` (PyTorch, VIẾT MỚI):** `LSTMAutoencoder` (nn.LSTM encoder→decoder→Linear), `train_lstm_ae`, `predict_lstm_ae`. **Đã có sẵn code đầy đủ trong plan** (đã vá bảo mật `torch.load(weights_only=True)`). + tests.
-- **T6 — `src/training/pipeline.py` + `cli.py` + `__main__.py`:** `run_training(dataset_path, model_type, backend, ...)` = **điểm điều khiển C0/C1/C2** (create_tracker → init/log_params/log_metrics/register_model(alias)/end). Test: C0 noop E2E + **model-swap IForest↔LSTM-AE** (RQ4). Code đầy đủ trong plan.
-- **T7 — Verify DoD:** `pytest -q && ruff check .` xanh; smoke C1 (MLflow sqlite) qua pipeline; checklist.
+### ✅ Đã xong (T4–T7)
+- **T4 — `src/training/{__init__,schema,core,data}.py`:** port verbatim từ `MLOps_Project/src/training/`. `TrainingConfig`/`FEATURE_COLUMNS` (schema), `train_isolation_forest`+`TrainingResult` (core), `apply_sliding_window`/`load_training_dataset`/`prepare_training_matrices`/`split_training_data` (data). Tracker-agnostic.
+- **T5 — `src/training/lstm_detector.py` (PyTorch):** `LSTMAutoencoder`, `train_lstm_ae`, `predict_lstm_ae` (đã vá `torch.load(weights_only=True)`). Determinism test (threshold + mean_val_mse).
+- **T6 — `src/training/{pipeline,cli,__main__}.py`:** `run_training(...)` = **điểm điều khiển C0/C1/C2** (backend qua `MLOPS_BACKEND`/arg). Test: C0 noop E2E + model-swap IForest↔LSTM-AE (RQ4). **Fix review:** tên registry theo model_type (`_REGISTRY_NAMES`: iforest→`iforest_pingpong`, lstm_ae→`lstm_ae_pingpong`) tránh đè alias `staging` khi model-swap; guard `isinstance` cho log_metrics.
+- **T7 — Verify DoD:** `tests/training/test_pipeline_mlflow.py` smoke C1 (MLflow sqlite) cho cả 2 model + khẳng định tên registry phân biệt. 65 test xanh, ruff sạch. DoD 6/6 PASS.
+- **Final review (opus):** READY TO MERGE, Critical=0. Đã áp dụng: validate `model_type` sớm (tránh dangling run cho caller P8) + test guard `FEATURE_COLS == FEATURE_COLUMNS` (chống drift). Phần nợ kỹ thuật defer → xem §9 mục 6–8.
 
-**Sau T7:** final review toàn P4 → merge `main` → xóa branch → sang P5.
-
-### Cách bắt đầu T4–T5 (lệnh mẫu cho agent)
-Dispatch implementer subagent (sonnet) với prompt: "branch `phase4-training`; đọc `docs/plans/2026-06-07-phase4-training-mlflow.md` Tasks 4–5; port `MLOps_Project/src/training/{schema,core,data}.py` verbatim + viết `lstm_detector.py` PyTorch theo code trong plan; thêm test theo plan; commit per task + trailer; KHÔNG push." → spec review → quality review → fix → tiếp T6 (implementer khác) → T7.
+**Sau khi HV duyệt:** merge `main` (local fast-forward) → xóa branch → sang **P5 (Serving)**. Plan P4 (lịch sử): `docs/plans/2026-06-07-phase4-training-mlflow.md`.
 
 ---
 
 ## 9. Loose ends / việc nợ (xử lý đúng phase)
 
 1. **`raw_data` DVC stage** (B/C1-C3/D raw EBS, ~60min) bị chạy DỞ ở P2, **chưa lock**. `dvc status` báo "changed". **Trước Exp-1/Exp-3 (P8):** chạy sạch `dvc repro raw_data` rồi commit `dvc.lock`.
-2. **`data/models/`** → thêm vào `.gitignore` khi model artifacts xuất hiện (P4 trở đi).
+2. **Model artifacts gitignore:** ✅ ĐÃ XỬ LÝ P4 — `.gitignore` có `artifacts/` (output `run_training`) + `*.joblib` + `*.pt` + tooling `.codegraph/`/`.cursor/`.
 3. **Push lên remote:** chưa push lần nào. Khi HV muốn: `git push` (main + branch). CI GitHub Actions sẽ chạy.
 4. **2 commit P3** lỡ dùng trailer "Claude Sonnet 4.6" — cosmetic, không sửa.
 5. **MLflow/ClearML servers thật** (docker) cho Exp-2/3 đo overhead → dựng ở **P7** (P4 chỉ sqlite-MLflow + ClearML-offline cho unit test).
+6. **[NỢ P4→P8] Provenance/dataset-lineage chưa log:** `run_training` tính `TrainingContext` (`ctx`: dataset_id/feature_version/source_snapshot_id) nhưng KHÔNG log; chưa gọi `tracker.log_dataset`/`log_artifact`. → Làm khi thiết kế thu thập 6 nhóm metrics; **nên log lineage dạng params/tags + DVC pointer, KHÔNG log full parquet mỗi run** (N≥10 → tốn storage). Củng cố delta traceability C1-vs-C0 (RQ3).
+7. **[NỢ P4→P8] LSTM data-path tách rời:** `train_lstm_ae` tự `read_parquet`+`train_test_split` (bỏ qua `load_training_dataset`/`prepare`/`split` của IForest), hardcode `test_size=0.2` thay vì `cfg.test_size`. → Thread `cfg.test_size`, dùng chung `FEATURE_COLUMNS` (đã có test guard chống drift). + IForest `fit_summary`/`validation_summary` hiện chưa log → `log_artifact` JSON sidecar.
+8. **[NỢ P4→P6/P8] `apply_sliding_window` chưa wire:** đã port nhưng pipeline CHƯA gọi (docstring nói chiến lược MTLF sliding-window) → P6 wire vào retrain (gated cfg) hoặc hạ tông docstring. **P8:** thêm clearml pipeline-level smoke trước full sweep (offline OK, nhưng server thật có thể fail `register_model` giữa chừng sau khi log metrics — không rollback).
 
 ---
 
 ## 10. BẮT TAY LÀM TIẾP — hành động cụ thể ngay
 
-1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase4-training && pytest -q` → xác nhận 54 xanh.
-2. Đọc `docs/plans/2026-06-07-phase4-training-mlflow.md` (Tasks 4–7).
-3. Thực thi T4→T7 **subagent-driven** (xem §4 + §8). Merge `main` khi HV duyệt.
-4. Tiếp P5→P9 theo `docs/IMPLEMENTATION_PLAN.md`: viết plan từng phase → subagent-driven → merge.
+1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase4-training && pytest -q` → xác nhận **65 xanh**.
+2. **P4 đã xong, chờ HV duyệt merge** → merge `main` (local fast-forward) → xóa branch `phase4-training`.
+3. **Bắt đầu P5 (Serving, C7):** viết plan `docs/plans/<date>-phase5-serving.md` (FastAPI `/predict` lấy online feature Feast theo IMSI → model từ registry MLflow; Docker; hot-reload/rollback) → branch `phase5-serving` → subagent-driven. Trước đó xử lý nợ §9 nếu liên quan.
+4. Tiếp P6→P9 theo `docs/IMPLEMENTATION_PLAN.md`: viết plan từng phase → subagent-driven → merge. (Nợ kỹ thuật P4 cần xử ở P6/P8 — xem §9 mục 6–8.)
 5. **P9 viết luận văn:** dùng skill `academic-pipeline`/`academic-paper`; điền **số liệu thật** từ `artifacts/`; bám `vietnamese_thesis_style_guide.md` (port từ repo cũ); LaTeX template port từ `MLOps_Project/Template_thesis_master/`.
 
 ---
