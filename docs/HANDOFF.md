@@ -1,7 +1,7 @@
 # HANDOFF — Luận văn MLOps NWDAF (bàn giao cho agent session khác)
 
 > **Mục đích:** Bản tổng hợp đầy đủ để một AI agent ở session khác **nắm bối cảnh + bắt tay làm tiếp ngay**. Đọc file này TRƯỚC, rồi đọc `CLAUDE.md` (luật repo, auto-load) + `docs/THESIS_SPEC.md` (spec) + `docs/IMPLEMENTATION_PLAN.md` (roadmap).
-> **Cập nhật:** 2026-06-08. **Tiến độ:** P0–P5 merged vào `main`; **P6 (Monitoring + auto-retrain) HOÀN TẤT** trên branch `phase6-monitoring` — T1–T7 xong, **122 test xanh**, per-task review + final whole-phase review (opus): READY TO MERGE, **chờ HV duyệt merge**. Kế tiếp: P7 (CI/CD + dựng servers MLflow/ClearML + Prometheus/Grafana).
+> **Cập nhật:** 2026-06-08. **Tiến độ:** **P0–P6 ĐÃ MERGE vào `main`** (7/9 phase code xong), **KHÔNG có branch đang mở**, **122 test xanh, ruff sạch**. Mỗi phase qua per-task review + final whole-phase review (opus) trước merge. **Kế tiếp: P7 (CI/CD, C1)** — GitHub Actions (feature→train→eval-gate→deploy) + dựng docker servers MLflow/ClearML + observability Prometheus/Grafana (scrape `/metrics` của P6). Còn lại sau P7: P8 (Experiments + Maturity), P9 (viết luận văn).
 
 ---
 
@@ -10,7 +10,7 @@
 - Đây là **luận văn thạc sĩ MLOps cho 5G NWDAF** (phát hiện ping-pong handover), hướng **ứng dụng** — xây pipeline MLOps end-to-end thật + **đo lường có đối chứng** giá trị MLOps. KHÔNG phải "khung đánh giá MLOps tổng quát" (bản cũ bị hội đồng đánh trượt vì điều đó).
 - **Đang build fresh** theo 10 phase (P0→P9), **subagent-driven** (mỗi task: implementer → spec review → quality review → fix → merge). Port logic đã kiểm chứng từ repo cũ `/Users/ngocmx/Thạc Sĩ/MLOps_Project/src/`.
 - **Đã xong & merge `main`:** P0 (scaffold + tracking), P1 (ingestion + DVC), P2 (synthetic + DVC), P3 (features + **Feast** C3), **P4 (Training C4–C6: IForest + PyTorch LSTM-AE, `run_training`=C0/C1/C2, MLflow/ClearML registry)**, **P5 (Serving C7: FastAPI `/predict`+Feast online+rollback, `ModelLoader`=biến C0/C1 deploy, Docker)**.
-- **P6 (Monitoring + auto-retrain, C8) HOÀN TẤT** (branch `phase6-monitoring`, chưa merge): drift covariate **PSI 3 tầng (tự code) + Evidently (chuẩn ngành, cross-check)** trên `predictions.jsonl`; **closed-loop drift→auto-retrain (sliding-window)→eval-gate→`ServingRuntime.reload()`** (RQ4/Exp-4); `/metrics` Prometheus scrape-ready. **Monitoring = năng lực C1** (KHÔNG abstraction; đối chứng = loop ON/OFF đo ở Exp-4). Tinh gọn chống over-engineering: server Prometheus/Grafana + dashboard → P7 (§9 mục 12). Plan: `docs/plans/2026-06-08-phase6-monitoring.md`. **Việc tiếp theo NGAY:** HV duyệt merge P6 → bắt đầu **P7 (CI/CD, C1)**.
+- **P6 (Monitoring + auto-retrain, C8) ĐÃ MERGE:** drift covariate **PSI 3 tầng (tự code) + Evidently (chuẩn ngành, cross-check)** trên `predictions.jsonl`; **closed-loop drift→auto-retrain (sliding-window)→eval-gate→`ServingRuntime.reload()`** (RQ4/Exp-4); `/metrics` Prometheus scrape-ready. **Monitoring = năng lực C1** (KHÔNG abstraction; đối chứng = loop ON/OFF đo ở Exp-4). Tinh gọn chống over-engineering: server Prometheus/Grafana + dashboard → P7 (§9 mục 12). Plan: `docs/plans/2026-06-08-phase6-monitoring.md`. **Việc tiếp theo NGAY:** bắt đầu **P7 (CI/CD, C1)** — brainstorm phạm vi infra trước (cái gì test tự động vs smoke thủ công) để không phình.
 - **122 test xanh, ruff sạch.** Chạy `source .venv/bin/activate && pytest -q && ruff check .` (≈22s).
 
 ---
@@ -53,7 +53,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 - **Repo cũ (nguồn để PORT, đọc-only):** `/Users/ngocmx/Thạc Sĩ/MLOps_Project` — đặc biệt `src/` (ingestion/features/training/tracking/data/experiments/serving). **KHÔNG đụng `nwdaf_mlops/` legacy.**
 - **venv:** `.venv` (Python **3.14.2**). Kích hoạt: `source .venv/bin/activate`. Cài: `pip install -e ".[dev,feast,lstm]"`.
 - **Deps chính (đã cài, qua `pyproject.toml`):** numpy/pandas/pyarrow/scipy, scikit-learn 1.9, **mlflow**, **dvc[s3]**, **evidently**, fastapi/uvicorn/pydantic, prometheus-client, psutil; extras: `[feast]`=feast 0.63, `[lstm]`=**torch>=2.6** (2.12 đã cài), `[clearml]`=clearml, `[dev]`=pytest/ruff/pre-commit.
-- **Git:** branch `main` (**P0–P6 merged**, HEAD `c7a3bb2`), **KHÔNG có branch đang mở** (mỗi phase merge xong xóa branch). Remote `origin` = `git@github.com:ngocmx2104/MLOps-NWDAF-V2.git`. **CHƯA push lần nào** — toàn bộ commit local; HV tự quyết push. **P7 trở đi: tạo branch `phase7-cicd` từ main.**
+- **Git:** branch `main` (**P0–P6 merged**; chạy `git log -1` để xem HEAD), **KHÔNG có branch đang mở** (mỗi phase merge xong xóa branch). Remote `origin` = `git@github.com:ngocmx2104/MLOps-NWDAF-V2.git`. **CHƯA push lần nào** — toàn bộ commit local; HV tự quyết push. **P7 trở đi: tạo branch `phase7-cicd` từ main.**
 - **Lưu ý Python 3.14:** TensorFlow KHÔNG cài được (dùng PyTorch). Nếu lib nào khác kẹt 3.14 → có sẵn **Python 3.12.8** tại `/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12`.
 
 ---
@@ -104,7 +104,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | **P3** | Features + **Feast** | C3 | ✅ merged (builder/weak_labels + Feast C3 + DVC `d2_features`/`weak_labels`) |
 | **P4** | Training + MLflow/ClearML | C4,C5,C6 | ✅ merged (IForest+PyTorch LSTM-AE, `run_training`=C0/C1/C2, MLflow/ClearML registry) |
 | **P5** | Serving | C7 | ✅ merged (FastAPI `/predict`+Feast online+rollback, ModelLoader=C0/C1 deploy, Docker) |
-| **P6** | Monitoring + auto-retrain | C8 | ✅ **xong (chưa merge)** — T1–T7, 122 test, PSI 3 tầng+Evidently, closed-loop drift→retrain→reload, `/metrics`; final review OK |
+| **P6** | Monitoring + auto-retrain | C8 | ✅ merged — T1–T7, PSI 3 tầng+Evidently, closed-loop drift→retrain→reload, `/metrics`; final review OK |
 | **P7** | CI/CD | C1 | ⬜ chưa — GitHub Actions (feature→train→eval-gate→deploy) + **docker servers MLflow/ClearML** + **observability stack Prometheus/Grafana** (scrape `/metrics` của P6) — xem §9 mục 12 |
 | **P8** | Experiments + Maturity | đánh giá | ⬜ chưa — Exp-1..6 + ML Test Score + Wilcoxon; **chạy full `raw_data` (~60min)** |
 | **P9** | Viết luận văn | — | ⬜ chưa — LaTeX, dùng skill `academic-pipeline`; điền số liệu thật |
@@ -189,11 +189,10 @@ Commit code: `bda1b0d` torch deps · `b5045c8` MLflowTracker · `c1f2dd2` ClearM
 
 ## 10. BẮT TAY LÀM TIẾP — hành động cụ thể ngay
 
-1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase6-monitoring && pytest -q` → xác nhận **122 xanh**.
-2. **P6 đã xong, chờ HV duyệt merge** → merge `main` (local fast-forward) → xóa branch `phase6-monitoring`.
-3. **Bắt đầu P7 (CI/CD, C1):** viết plan `docs/plans/<date>-phase7-cicd.md` (GitHub Actions: feature→train→**eval-gate**→deploy; **dựng docker servers MLflow/ClearML** cho Exp-2/3 đo overhead; **observability stack Prometheus/Grafana** scrape `/metrics` của P6 — §9 mục 12; xử nợ §9 mục 9–10 LSTM-registry self-contained + compose model prereq, mục 13 eval-gate registry governance) → branch `phase7-cicd` → subagent-driven.
-4. Tiếp P8→P9 theo `docs/IMPLEMENTATION_PLAN.md`: viết plan từng phase → subagent-driven → merge. (Nợ kỹ thuật cần xử: §9 mục 6–8 + 14 ở P8; mục 9–10 + 13 ở P7; mục 15 ở P9.)
-5. **P9 viết luận văn:** dùng skill `academic-pipeline`/`academic-paper`; điền **số liệu thật** từ `artifacts/`; bám `vietnamese_thesis_style_guide.md` (port từ repo cũ); LaTeX template port từ `MLOps_Project/Template_thesis_master/`.
+1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout main && pytest -q && ruff check .` → xác nhận **122 xanh** (P0–P6 đã merge trên main). `git log --oneline -8` để xem các commit gần nhất.
+2. **Bắt đầu P7 (CI/CD, C1)** — theo flow §4: **brainstorm trước** (P7 nhiều infra → chốt phạm vi: cái gì test tự động vs smoke thủ công như Docker P5, tránh phình) → viết plan `docs/plans/<date>-phase7-cicd.md` (GitHub Actions: feature→train→**eval-gate**→deploy; **dựng docker servers MLflow/ClearML** cho Exp-2/3 đo overhead; **observability stack Prometheus/Grafana** scrape `/metrics` của P6 — §9 mục 12; xử nợ §9 mục 9–10 LSTM-registry self-contained + compose model prereq, mục 13 eval-gate registry governance) → branch `phase7-cicd` từ main → subagent-driven.
+3. Tiếp P8→P9 theo `docs/IMPLEMENTATION_PLAN.md`: viết plan từng phase → subagent-driven → merge. (Nợ kỹ thuật cần xử: §9 mục 6–8 + 14 ở P8; mục 9–10 + 13 ở P7; mục 15 ở P9.)
+4. **P9 viết luận văn:** dùng skill `academic-pipeline`/`academic-paper`; điền **số liệu thật** từ `artifacts/`; bám `vietnamese_thesis_style_guide.md` (port từ repo cũ); LaTeX template port từ `MLOps_Project/Template_thesis_master/`.
 
 ---
 
