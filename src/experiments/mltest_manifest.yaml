@@ -1,0 +1,28 @@
+# ML Test Score evidence manifest (Breck et al. 2017). score: 0 | 0.5 (manual) | 1 (automated).
+# Each test credited ONLY if >=1 evidence pointer verifies (see src/experiments/maturity.py).
+tests:
+  - id: data_3_feature_code_tested
+    section: data
+    score: 1
+    evidence:
+      - {kind: path, ref: "src/features/quality.py"}
+  - id: infra_1_training_reproducible
+    section: infrastructure
+    score: 1
+    evidence:
+      - {kind: pytest, ref: "tests/training/test_pipeline_mlflow.py"}
+  - id: infra_5_ci_full_suite
+    section: infrastructure
+    score: 1
+    evidence:
+      - {kind: workflow, ref: "ci.yml"}
+  - id: monitor_1_drift_detection
+    section: monitoring
+    score: 1
+    evidence:
+      - {kind: pytest, ref: "tests/monitoring/test_retrain.py"}
+  - id: model_2_offline_metrics
+    section: model
+    score: 1
+    evidence:
+      - {kind: symbol, ref: "compute_model_metrics"}
