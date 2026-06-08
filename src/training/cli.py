@@ -18,6 +18,7 @@ Usage examples::
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 from pathlib import Path
@@ -63,6 +64,10 @@ def cmd_train(args: argparse.Namespace) -> None:
     for k, v in result["metrics"].items():
         print(f"    {k}: {v:.4f}" if isinstance(v, float) else f"    {k}: {v}")
     print("=" * 60)
+
+    result_path = Path(args.output_dir) / "training_result.json"
+    result_path.write_text(json.dumps(result, indent=2, default=str))
+    print(f"  Result JSON:   {result_path}")
 
 
 def main() -> None:

@@ -97,3 +97,54 @@ stages:
       md5: c61ffafeb25dd1673d17bf7e4bd15566.dir
       size: 186853
       nfiles: 2
+  fixture:
+    cmd: python -m src.cicd fixture --output artifacts/cicd/fixture.parquet
+    deps:
+    - path: src/cicd/fixture.py
+      hash: md5
+      md5: 87453838b528a751d280f767a273ec0e
+      size: 1187
+    outs:
+    - path: artifacts/cicd/fixture.parquet
+      hash: md5
+      md5: 93d7a56706b664c3f6de72fa8185ab00
+      size: 30681
+  train:
+    cmd: python -m src.training train --dataset artifacts/cicd/fixture.parquet 
+      --output-dir artifacts/cicd/models
+    deps:
+    - path: artifacts/cicd/fixture.parquet
+      hash: md5
+      md5: 93d7a56706b664c3f6de72fa8185ab00
+      size: 30681
+    - path: src/training
+      hash: md5
+      md5: ed6ac48271b83ee8e7010576f4cc2924.dir
+      size: 56176
+      nfiles: 16
+    outs:
+    - path: artifacts/cicd/models
+      hash: md5
+      md5: ab7a2c4e81864a3c3e13bdf0fa2f0d1a.dir
+      size: 1499317
+      nfiles: 2
+  eval:
+    cmd: python -m src.cicd gate --metrics 
+      artifacts/cicd/models/training_result.json --output 
+      artifacts/cicd/gate_result.json --min-roc-auc 0.7
+    deps:
+    - path: artifacts/cicd/models
+      hash: md5
+      md5: ab7a2c4e81864a3c3e13bdf0fa2f0d1a.dir
+      size: 1499317
+      nfiles: 2
+    - path: src/cicd
+      hash: md5
+      md5: 641eaa4e8fd56563bb0a94aaed8feee8.dir
+      size: 20399
+      nfiles: 12
+    outs:
+    - path: artifacts/cicd/gate_result.json
+      hash: md5
+      md5: acde7135c63435c5fc4b7bf48eb99c3e
+      size: 118

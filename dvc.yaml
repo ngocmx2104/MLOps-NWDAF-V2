@@ -49,3 +49,27 @@ stages:
       - src/features/weak_labels.py
     outs:
       - artifacts/features_labeled
+
+  fixture:
+    cmd: python -m src.cicd fixture --output artifacts/cicd/fixture.parquet
+    deps:
+      - src/cicd/fixture.py
+    outs:
+      - artifacts/cicd/fixture.parquet
+
+  train:
+    cmd: python -m src.training train --dataset artifacts/cicd/fixture.parquet --output-dir artifacts/cicd/models
+    deps:
+      - artifacts/cicd/fixture.parquet
+      - src/training
+    outs:
+      - artifacts/cicd/models
+
+  eval:
+    cmd: python -m src.cicd gate --metrics artifacts/cicd/models/training_result.json
+      --output artifacts/cicd/gate_result.json --min-roc-auc 0.7
+    deps:
+      - artifacts/cicd/models
+      - src/cicd
+    outs:
+      - artifacts/cicd/gate_result.json
