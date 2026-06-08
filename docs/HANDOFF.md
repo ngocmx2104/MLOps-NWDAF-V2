@@ -105,7 +105,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | **P4** | Training + MLflow/ClearML | C4,C5,C6 | ✅ merged (IForest+PyTorch LSTM-AE, `run_training`=C0/C1/C2, MLflow/ClearML registry) |
 | **P5** | Serving | C7 | ✅ **xong (chưa merge)** — T1–T8, 106 test + Docker smoke, ModelLoader C0/C1, final review OK |
 | **P6** | Monitoring + auto-retrain | C8 | ⬜ chưa — PSI + Evidently + Prometheus/Grafana + drift→retrain |
-| **P7** | CI/CD | C1 | ⬜ chưa — GitHub Actions (feature→train→eval-gate→deploy) + **docker servers MLflow/ClearML** |
+| **P7** | CI/CD | C1 | ⬜ chưa — GitHub Actions (feature→train→eval-gate→deploy) + **docker servers MLflow/ClearML** + **observability stack Prometheus/Grafana** (scrape `/metrics` của P6) — xem §9 mục 12 |
 | **P8** | Experiments + Maturity | đánh giá | ⬜ chưa — Exp-1..6 + ML Test Score + Wilcoxon; **chạy full `raw_data` (~60min)** |
 | **P9** | Viết luận văn | — | ⬜ chưa — LaTeX, dùng skill `academic-pipeline`; điền số liệu thật |
 
@@ -169,6 +169,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 9. **[NỢ P5→P7] LSTM serving qua registry chưa self-contained:** registry chỉ lưu meta bundle; `.pt` trỏ absolute path lúc train → `RegistryModelLoader` đã WARN, iforest (model chính) KHÔNG ảnh hưởng; P5 dùng PathLoader cho lstm cục bộ (single-node OK). **P7:** log cả `.pt` + resolve relative để lstm serving chạy remote/Docker.
 10. **[NỢ P5→P7] docker-compose cần model có sẵn:** `MLOPS_SERVING_MODEL_PATH=/app/models/model_iforest.joblib` mount từ `artifacts/models` (gitignored) → fresh clone phải train model trước (nếu không container start nhưng `/predict` lỗi runtime). Thêm comment/README hoặc healthcheck ở P7.
 11. **[NỢ P5→P6/P8] serving minor:** `ServingConfig.to_dict()` chưa được code src/ dùng (helper provenance cho P8); `FeastOnlineProvider.get` nhận list nhưng runtime chỉ gọi 1 IMSI (batch latent, chưa test). Xử khi P6/P8 cần. **P6 hook:** `ServingRuntime.reload()` = điểm auto-retrain gọi; `predictions.jsonl` (có `feature_values`+`anomaly_score`+`latency_ms`) = substrate cho drift/Evidently/PSI.
+12. **[CẮT KHỎI P6 → P7] Observability infra (quyết định thiết kế P6, chống over-engineering):** P6 chỉ làm **logic monitoring** (PSI 3 tầng + Evidently + drift→auto-retrain→reload closed-loop) + endpoint **`/metrics` scrape-ready** (prometheus_client trên app serving). **Chuyển P7 (cùng chỗ dựng server MLflow/ClearML):** (a) **server Prometheus thật** scrape `/metrics`; (b) **Grafana** + dashboards (datasource + panel) — visualize ops/drift; (c) `docker-compose.monitoring.yml` (Prometheus+Grafana containers). **Đã bỏ hẳn (không cần):** daemon `loop` định kỳ (Exp-4 nạp window theo kịch bản/batch, không cần chạy nền); push drift gauge lên Prometheus (artifact drift = `drift_history.jsonl` + metric đo được, KHÔNG phải gauge). **Lý do cắt:** infra observability không sinh metric academic (latency/resource đã đo trực tiếp `perf_counter`/`psutil`→JSONL); dựng server thuộc P7. 8/8 Kreuzberger vẫn giữ: C8 logic+endpoint ở P6, server ở P7.
 
 ---
 
