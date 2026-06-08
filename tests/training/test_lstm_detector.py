@@ -1,6 +1,17 @@
 import numpy as np
 
 from src.training.lstm_detector import FEATURE_COLS, predict_lstm_ae, train_lstm_ae
+from src.training.schema import FEATURE_COLUMNS
+
+
+def test_feature_cols_match_schema():
+    """LSTM feature order MUST equal the canonical schema order.
+
+    Both detectors must consume the exact same features in the same order, or the
+    IForest vs LSTM-AE comparison (RQ3/RQ4) is invalid. This guards against silent
+    drift between lstm_detector.FEATURE_COLS and src.training.schema.FEATURE_COLUMNS.
+    """
+    assert list(FEATURE_COLS) == list(FEATURE_COLUMNS)
 
 
 def test_lstm_ae_trains_and_predicts(labeled_features, tmp_path):

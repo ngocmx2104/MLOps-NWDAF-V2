@@ -1,3 +1,5 @@
+import pytest
+
 from src.training.pipeline import run_training
 from src.training.schema import TrainingConfig
 
@@ -22,3 +24,10 @@ def test_model_swap_iforest_to_lstm(labeled_features, tmp_path):
     assert a["model_type"] == "iforest" and b["model_type"] == "lstm_ae"
     assert "metrics" in a and "metrics" in b  # both ran through the SAME pipeline
     assert a["metrics"] and b["metrics"]  # both models produced at least one metric
+
+
+def test_invalid_model_type_raises(labeled_features, tmp_path):
+    """A bad model_type must fail fast (before a tracker run is opened)."""
+    path, _ = labeled_features
+    with pytest.raises(ValueError, match="Unknown model_type"):
+        run_training(path, model_type="xgboost", backend="noop", output_dir=tmp_path / "m")

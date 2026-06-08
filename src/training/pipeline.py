@@ -29,6 +29,10 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
                  backend: str | None = None, output_dir: Path = Path("artifacts/models"),
                  cfg: TrainingConfig | None = None, run_name: str | None = None) -> dict[str, Any]:
     cfg = cfg or TrainingConfig(use_labels_for_evaluation=True)
+    # Validate before opening a tracker run, so a bad model_type from a direct API
+    # caller (e.g. the P8 experiment harness) cannot leave a dangling RUNNING run.
+    if model_type not in _REGISTRY_NAMES:
+        raise ValueError(f"Unknown model_type={model_type!r} (expected one of {sorted(_REGISTRY_NAMES)})")
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     tracker = create_tracker(backend)
