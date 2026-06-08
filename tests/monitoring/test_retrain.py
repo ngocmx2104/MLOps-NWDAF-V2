@@ -42,6 +42,7 @@ def test_drift_triggers_retrain_and_reload(reference_parquet, predictions_drift,
         model_type="iforest", backend="mlflow", runtime=runtime)
     assert out["retrained"] is True
     assert out["new_auc"] >= 0.0
+    assert out["retrain_count"] == 1  # surfaced for the P8 Exp-4 retrain-count metric
     assert runtime.model.version != before  # reload() deployed the freshly retrained version
 
 
