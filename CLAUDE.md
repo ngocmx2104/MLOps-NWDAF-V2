@@ -15,6 +15,7 @@ Workspace cho **luận văn thạc sĩ (UET-VNU)** của **Mai Xuân Ngọc** (M
 - **Use case khóa cứng:** Phát hiện bất thường **ping-pong handover** của UE (thuê bao chuyển giao qua lại liên tục giữa 2 cell) từ dữ liệu **EBS** (Event-Based Statistics) của NWDAF.
 - **Trạng thái:** Workspace **mới**. Chủ trương: **build fresh theo `docs/THESIS_SPEC.md`**, chỉ *tái dùng có chọn lọc* logic đã kiểm chứng từ repo cũ (xem §8). Mục §5 mô tả **kiến trúc MỤC TIÊU**.
 - **Thời gian:** **KHÔNG còn ràng buộc cứng** — ưu tiên *hoàn chỉnh & đúng* hơn là cắt giảm cho kịp. Git đã `init` + add remote.
+- **LSTM-AE dùng PyTorch** (chạy trên Python 3.14, một venv duy nhất) — `pip install -e ".[lstm]"` cài `torch>=2.6`; không cần venv riêng cho TF/3.12.
 
 ---
 
@@ -82,7 +83,7 @@ Theo phong cách tutorial MLOps công nghiệp (DVC + Feast + MLflow + Evidently
 EBS files (real + synthetic)
   → Data pipeline      ingest/parse EBS → snapshot → DVC versioning (+ remote)
   → Feature pipeline   7 đặc trưng handover/(IMSI, window) + weak labels → Feast feature store
-  → Training           IsolationForest (chính) / LSTM-AE (model-swap) → MLflow tracking + registry (alias/stage)
+  → Training           IsolationForest (chính) / LSTM-AE PyTorch (model-swap) → MLflow tracking + registry (alias/stage)
   → Serving            FastAPI /predict + Docker (compose)
   → Monitoring         drift: PSI (tự code) + Evidently (chuẩn ngành); system metrics (Prometheus/Grafana)
   → CI/CD              GitHub Actions (+ self-hosted runner): feature → train → serve/deploy

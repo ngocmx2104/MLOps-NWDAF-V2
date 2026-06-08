@@ -61,7 +61,7 @@ N≥10 runs/cấu hình · fixed seeds · loại warmup · **Wilcoxon signed-ran
 EBS (real 3 files + synthetic calibrated)
   → Data pipeline    parse EBS → snapshot → DVC versioning (dvc.yaml DAG)        [C3 + C2]
   → Feature pipeline 7 đặc trưng handover + weak labels → Feast (offline+online) [C3 feature store]
-  → Training         IsolationForest / LSTM-AE → MLflow tracking+registry(alias/stage) [C4,C5,C6]
+  → Training         IsolationForest / LSTM-AE (PyTorch) → MLflow tracking+registry(alias/stage) [C4,C5,C6]
   → Serving          FastAPI /predict (lấy online features từ Feast) + Docker     [C7]
   → Monitoring       PSI + Evidently drift; Prometheus/Grafana ops; auto-retrain  [C8]
   → CI/CD            GitHub Actions: feature → train → eval-gate → serve/deploy    [C1]
@@ -73,7 +73,7 @@ EBS (real 3 files + synthetic calibrated)
 | C1 | CI/CD | GitHub Actions | build/test/eval-gate/deploy; trigger retrain |
 | C2 | Workflow orchestration | **DVC pipelines (`dvc.yaml`) + GitHub Actions** | DAG tái lập (`dvc repro`); nâng cấp orchestrator chuyên dụng nếu cần |
 | C3 | Feature store + data versioning | **Feast + DVC** | Feast: online (AnLF real-time) + offline (MTLF batch), point-in-time join; DVC: version dữ liệu EBS |
-| C4 | Training infra | sklearn (IForest) / TF (LSTM-AE) + MLflow | tracking trong run |
+| C4 | Training infra | sklearn (IForest) / **PyTorch** (LSTM-AE) + MLflow | tracking trong run; LSTM-AE dùng PyTorch (một venv duy nhất, Python 3.14) |
 | C5 | Model registry | MLflow Registry | version + alias + stage (staging→production→archived) |
 | C6 | ML metadata store | MLflow Tracking | params/metrics/artifacts/lineage |
 | C7 | Model serving | FastAPI + Docker | `/predict`, `/health`, hot-reload, rollback |
@@ -92,7 +92,7 @@ EBS (real 3 files + synthetic calibrated)
 | Lựa chọn framework | Tracking layer | MLflow vs ClearML | tracking overhead, RSS, governance | RQ3 |
 | Concept drift | Monitoring (C8) | PSI + Evidently | drift recall/FPR, detection latency | RQ4 |
 | Model degradation | Feedback/CT (C1,C8) | auto-retrain trigger | recovery time, trigger đúng | RQ4 |
-| Linh hoạt thuật toán | Training (C4) | IForest ↔ LSTM-AE | swap không đổi pipeline; Wilcoxon | RQ4 |
+| Linh hoạt thuật toán | Training (C4) | IForest ↔ LSTM-AE (PyTorch) | swap không đổi pipeline; Wilcoxon | RQ4 |
 | Modifiability (feature/rule) | Pipeline mô-đun | code mô-đun | module chạm, LOC đổi, regression count | RQ4 |
 | Vận hành thủ công | CI/CD (C1) | GitHub Actions | DORA: lead time, deploy freq, MTTR | RQ3 |
 
