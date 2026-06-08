@@ -1,7 +1,7 @@
 # HANDOFF — Luận văn MLOps NWDAF (bàn giao cho agent session khác)
 
 > **Mục đích:** Bản tổng hợp đầy đủ để một AI agent ở session khác **nắm bối cảnh + bắt tay làm tiếp ngay**. Đọc file này TRƯỚC, rồi đọc `CLAUDE.md` (luật repo, auto-load) + `docs/THESIS_SPEC.md` (spec) + `docs/IMPLEMENTATION_PLAN.md` (roadmap).
-> **Cập nhật:** 2026-06-08. **Tiến độ:** P0–P3 merged; **P4 (Training) HOÀN TẤT** trên branch `phase4-training` — T1–T7 xong, **65 test xanh**, đã qua per-task review + final whole-phase review (opus): READY TO MERGE, **chờ HV duyệt merge**. Kế tiếp: P5 (Serving).
+> **Cập nhật:** 2026-06-08. **Tiến độ:** P0–P4 merged vào `main`; **P5 (Serving) HOÀN TẤT** trên branch `phase5-serving` — T1–T8 xong, **106 test xanh** + Docker build & `/health` smoke OK, per-task review + final whole-phase review (opus): READY TO MERGE, **chờ HV duyệt merge**. Kế tiếp: P6 (Monitoring + auto-retrain, C8).
 
 ---
 
@@ -9,9 +9,9 @@
 
 - Đây là **luận văn thạc sĩ MLOps cho 5G NWDAF** (phát hiện ping-pong handover), hướng **ứng dụng** — xây pipeline MLOps end-to-end thật + **đo lường có đối chứng** giá trị MLOps. KHÔNG phải "khung đánh giá MLOps tổng quát" (bản cũ bị hội đồng đánh trượt vì điều đó).
 - **Đang build fresh** theo 10 phase (P0→P9), **subagent-driven** (mỗi task: implementer → spec review → quality review → fix → merge). Port logic đã kiểm chứng từ repo cũ `/Users/ngocmx/Thạc Sĩ/MLOps_Project/src/`.
-- **Đã xong & merge `main`:** P0 (scaffold + tracking abstraction), P1 (ingestion + DVC snapshot), P2 (synthetic data + DVC profile/features), P3 (features + **Feast** feature store C3).
-- **P4 (Training) HOÀN TẤT** (branch `phase4-training`, chưa merge): training core (IForest port + PyTorch LSTM-AE), `run_training` = điểm điều khiển C0/C1/C2, MLflow/ClearML trackers registry thật. **Việc tiếp theo NGAY:** HV duyệt merge P4 → bắt đầu **P5 (Serving, C7)**: FastAPI `/predict` (lấy online feature Feast) + Docker, hot-reload/rollback. Plan P4: `docs/plans/2026-06-07-phase4-training-mlflow.md`.
-- **65 test xanh, ruff sạch.** Chạy `source .venv/bin/activate && pytest -q && ruff check .` (≈14s).
+- **Đã xong & merge `main`:** P0 (scaffold + tracking abstraction), P1 (ingestion + DVC snapshot), P2 (synthetic data + DVC profile/features), P3 (features + **Feast** feature store C3), **P4 (Training C4–C6: IForest + PyTorch LSTM-AE, `run_training` = điểm điều khiển C0/C1/C2, MLflow/ClearML registry thật)**.
+- **P5 (Serving, C7) HOÀN TẤT** (branch `phase5-serving`, chưa merge): FastAPI `/predict` (IMSI→Feast online HOẶC raw features, trả `latency_ms`) + `/health` + `/model-info` + `/admin/reload` + `/admin/rollback`; **`ModelLoader` abstraction = biến điều khiển C0/C1 deployment** (PathLoader vs MLflow RegistryLoader, rollback theo alias/version) — mở rộng đối chứng vào khâu deploy (RQ3); model-swap iforest↔lstm_ae qua cùng service (RQ4); Docker (build + `/health` smoke OK). Plan: `docs/plans/2026-06-08-phase5-serving.md`. **Việc tiếp theo NGAY:** HV duyệt merge P5 → bắt đầu **P6 (Monitoring + auto-retrain, C8)**.
+- **106 test xanh, ruff sạch.** Chạy `source .venv/bin/activate && pytest -q && ruff check .` (≈16s).
 
 ---
 
@@ -102,8 +102,8 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | **P1** | Data ingestion | C2,C3 | ✅ merged (parser/quality/snapshot/CLI + DVC `snapshot`) |
 | **P2** | Synthetic data | hỗ trợ | ✅ merged (real_profile/generators + DVC `profile`/`features`; `raw_data` defer) |
 | **P3** | Features + **Feast** | C3 | ✅ merged (builder/weak_labels + Feast C3 + DVC `d2_features`/`weak_labels`) |
-| **P4** | Training + MLflow/ClearML | C4,C5,C6 | ✅ **xong (chưa merge)** — T1–T7, 65 test, final review OK |
-| **P5** | Serving | C7 | ⬜ chưa — FastAPI `/predict` (lấy online feature Feast) + Docker, hot-reload/rollback |
+| **P4** | Training + MLflow/ClearML | C4,C5,C6 | ✅ merged (IForest+PyTorch LSTM-AE, `run_training`=C0/C1/C2, MLflow/ClearML registry) |
+| **P5** | Serving | C7 | ✅ **xong (chưa merge)** — T1–T8, 106 test + Docker smoke, ModelLoader C0/C1, final review OK |
 | **P6** | Monitoring + auto-retrain | C8 | ⬜ chưa — PSI + Evidently + Prometheus/Grafana + drift→retrain |
 | **P7** | CI/CD | C1 | ⬜ chưa — GitHub Actions (feature→train→eval-gate→deploy) + **docker servers MLflow/ClearML** |
 | **P8** | Experiments + Maturity | đánh giá | ⬜ chưa — Exp-1..6 + ML Test Score + Wilcoxon; **chạy full `raw_data` (~60min)** |
@@ -166,15 +166,18 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 6. **[NỢ P4→P8] Provenance/dataset-lineage chưa log:** `run_training` tính `TrainingContext` (`ctx`: dataset_id/feature_version/source_snapshot_id) nhưng KHÔNG log; chưa gọi `tracker.log_dataset`/`log_artifact`. → Làm khi thiết kế thu thập 6 nhóm metrics; **nên log lineage dạng params/tags + DVC pointer, KHÔNG log full parquet mỗi run** (N≥10 → tốn storage). Củng cố delta traceability C1-vs-C0 (RQ3).
 7. **[NỢ P4→P8] LSTM data-path tách rời:** `train_lstm_ae` tự `read_parquet`+`train_test_split` (bỏ qua `load_training_dataset`/`prepare`/`split` của IForest), hardcode `test_size=0.2` thay vì `cfg.test_size`. → Thread `cfg.test_size`, dùng chung `FEATURE_COLUMNS` (đã có test guard chống drift). + IForest `fit_summary`/`validation_summary` hiện chưa log → `log_artifact` JSON sidecar.
 8. **[NỢ P4→P6/P8] `apply_sliding_window` chưa wire:** đã port nhưng pipeline CHƯA gọi (docstring nói chiến lược MTLF sliding-window) → P6 wire vào retrain (gated cfg) hoặc hạ tông docstring. **P8:** thêm clearml pipeline-level smoke trước full sweep (offline OK, nhưng server thật có thể fail `register_model` giữa chừng sau khi log metrics — không rollback).
+9. **[NỢ P5→P7] LSTM serving qua registry chưa self-contained:** registry chỉ lưu meta bundle; `.pt` trỏ absolute path lúc train → `RegistryModelLoader` đã WARN, iforest (model chính) KHÔNG ảnh hưởng; P5 dùng PathLoader cho lstm cục bộ (single-node OK). **P7:** log cả `.pt` + resolve relative để lstm serving chạy remote/Docker.
+10. **[NỢ P5→P7] docker-compose cần model có sẵn:** `MLOPS_SERVING_MODEL_PATH=/app/models/model_iforest.joblib` mount từ `artifacts/models` (gitignored) → fresh clone phải train model trước (nếu không container start nhưng `/predict` lỗi runtime). Thêm comment/README hoặc healthcheck ở P7.
+11. **[NỢ P5→P6/P8] serving minor:** `ServingConfig.to_dict()` chưa được code src/ dùng (helper provenance cho P8); `FeastOnlineProvider.get` nhận list nhưng runtime chỉ gọi 1 IMSI (batch latent, chưa test). Xử khi P6/P8 cần. **P6 hook:** `ServingRuntime.reload()` = điểm auto-retrain gọi; `predictions.jsonl` (có `feature_values`+`anomaly_score`+`latency_ms`) = substrate cho drift/Evidently/PSI.
 
 ---
 
 ## 10. BẮT TAY LÀM TIẾP — hành động cụ thể ngay
 
-1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase4-training && pytest -q` → xác nhận **65 xanh**.
-2. **P4 đã xong, chờ HV duyệt merge** → merge `main` (local fast-forward) → xóa branch `phase4-training`.
-3. **Bắt đầu P5 (Serving, C7):** viết plan `docs/plans/<date>-phase5-serving.md` (FastAPI `/predict` lấy online feature Feast theo IMSI → model từ registry MLflow; Docker; hot-reload/rollback) → branch `phase5-serving` → subagent-driven. Trước đó xử lý nợ §9 nếu liên quan.
-4. Tiếp P6→P9 theo `docs/IMPLEMENTATION_PLAN.md`: viết plan từng phase → subagent-driven → merge. (Nợ kỹ thuật P4 cần xử ở P6/P8 — xem §9 mục 6–8.)
+1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase5-serving && pytest -q` → xác nhận **106 xanh**.
+2. **P5 đã xong, chờ HV duyệt merge** → merge `main` (local fast-forward) → xóa branch `phase5-serving`.
+3. **Bắt đầu P6 (Monitoring + auto-retrain, C8):** viết plan `docs/plans/<date>-phase6-monitoring.md` (PSI 3 tầng + Evidently drift trên `predictions.jsonl` của serving; Prometheus/Grafana system metrics; drift→trigger `run_training` retrain→`ServingRuntime.reload()`) → branch `phase6-monitoring` → subagent-driven. Trước đó xử nợ §9 liên quan (mục 8 sliding-window, 11 reload hook).
+4. Tiếp P7→P9 theo `docs/IMPLEMENTATION_PLAN.md`: viết plan từng phase → subagent-driven → merge. (Nợ kỹ thuật cần xử: §9 mục 6–8 ở P8, mục 9–10 ở P7.)
 5. **P9 viết luận văn:** dùng skill `academic-pipeline`/`academic-paper`; điền **số liệu thật** từ `artifacts/`; bám `vietnamese_thesis_style_guide.md` (port từ repo cũ); LaTeX template port từ `MLOps_Project/Template_thesis_master/`.
 
 ---
