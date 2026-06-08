@@ -53,7 +53,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 - **Repo cũ (nguồn để PORT, đọc-only):** `/Users/ngocmx/Thạc Sĩ/MLOps_Project` — đặc biệt `src/` (ingestion/features/training/tracking/data/experiments/serving). **KHÔNG đụng `nwdaf_mlops/` legacy.**
 - **venv:** `.venv` (Python **3.14.2**). Kích hoạt: `source .venv/bin/activate`. Cài: `pip install -e ".[dev,feast,lstm]"`.
 - **Deps chính (đã cài, qua `pyproject.toml`):** numpy/pandas/pyarrow/scipy, scikit-learn 1.9, **mlflow**, **dvc[s3]**, **evidently**, fastapi/uvicorn/pydantic, prometheus-client, psutil; extras: `[feast]`=feast 0.63, `[lstm]`=**torch>=2.6** (2.12 đã cài), `[clearml]`=clearml, `[dev]`=pytest/ruff/pre-commit.
-- **Git:** branch `main` (P0–P3 merged, HEAD `efc1a9e`) + `phase4-training` (đang làm). Remote `origin` = `git@github.com:ngocmx2104/MLOps-NWDAF-V2.git`. **CHƯA push** — toàn bộ là commit local; HV tự quyết push/merge.
+- **Git:** branch `main` (**P0–P6 merged**, HEAD `c7a3bb2`), **KHÔNG có branch đang mở** (mỗi phase merge xong xóa branch). Remote `origin` = `git@github.com:ngocmx2104/MLOps-NWDAF-V2.git`. **CHƯA push lần nào** — toàn bộ commit local; HV tự quyết push. **P7 trở đi: tạo branch `phase7-cicd` từ main.**
 - **Lưu ý Python 3.14:** TensorFlow KHÔNG cài được (dùng PyTorch). Nếu lib nào khác kẹt 3.14 → có sẵn **Python 3.12.8** tại `/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12`.
 
 ---
@@ -90,7 +90,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | `docs/THESIS_SPEC.md` | Spec thiết kế: RQ, đóng góp C1–C4, 6 thực nghiệm, kiến trúc 8 thành phần, **bảng truy vết Thách thức→Thành phần→Công cụ→Metric→RQ** |
 | `docs/research/METHODOLOGY_GROUNDING.md` | Deep-research (nguồn đã verify): thiết kế đối chứng, scoping stack, metrics, ML Test Score, gap NWDAF |
 | `docs/IMPLEMENTATION_PLAN.md` | Roadmap tổng 10 phase + DoD + mapping Exp→RQ→Phase + danh sách port |
-| `docs/plans/2026-06-07-phaseN-*.md` | Plan chi tiết bite-sized từng phase (P0,P1,P2,P3,P4 đã có) |
+| `docs/plans/2026-06-0{7,8}-phaseN-*.md` | Plan chi tiết bite-sized từng phase — **P0–P6 đã có** (P0–P4 ngày `06-07`, P5/P6 ngày `06-08`) |
 
 ---
 
@@ -134,9 +134,12 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 
 ---
 
-## 8. PHASE 4 — HOÀN TẤT (chờ merge) — chi tiết
+## 8. PHASE 4–6 (Training / Serving / Monitoring) — ĐÃ MERGE `main` — chi tiết subsystem
 
-**Branch `phase4-training`** — T1–T7 xong, **65 test xanh, ruff sạch, tree sạch, CHƯA merge/push**. Commit code: `bda1b0d` torch deps · `b5045c8` MLflowTracker · `c1f2dd2` ClearMLTracker · `64abf4d` fix test ClearML · `6654b75` IForest core+data · `1564e03` PyTorch LSTM-AE · `688bfe3` pipeline+CLI (C0/C1/C2) · `8669a86` MLflow C1 smoke + distinct registry names · `39cb0ab` chore gitignore · `2cb7d4a` validate model_type + drift guard.
+> Map nhanh cho agent mới: cái gì đã có trong codebase để KHÔNG làm lại + biết wire vào đâu. (P0–P3 ở §7; full detail ở các plan `docs/plans/`.)
+
+### P4 — Training (C4–C6) — ĐÃ MERGE. (T1–T7, 65 test lúc kết phase.)
+Commit code: `bda1b0d` torch deps · `b5045c8` MLflowTracker · `c1f2dd2` ClearMLTracker · `64abf4d` fix test ClearML · `6654b75` IForest core+data · `1564e03` PyTorch LSTM-AE · `688bfe3` pipeline+CLI (C0/C1/C2) · `8669a86` MLflow C1 smoke + distinct registry names · `39cb0ab` chore gitignore · `2cb7d4a` validate model_type + drift guard.
 
 **Plan đầy đủ:** `docs/plans/2026-06-07-phase4-training-mlflow.md` (đọc kỹ — có code/test cụ thể từng task).
 
@@ -152,7 +155,15 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 - **T7 — Verify DoD:** `tests/training/test_pipeline_mlflow.py` smoke C1 (MLflow sqlite) cho cả 2 model + khẳng định tên registry phân biệt. 65 test xanh, ruff sạch. DoD 6/6 PASS.
 - **Final review (opus):** READY TO MERGE, Critical=0. Đã áp dụng: validate `model_type` sớm (tránh dangling run cho caller P8) + test guard `FEATURE_COLS == FEATURE_COLUMNS` (chống drift). Phần nợ kỹ thuật defer → xem §9 mục 6–8.
 
-**Sau khi HV duyệt:** merge `main` (local fast-forward) → xóa branch → sang **P5 (Serving)**. Plan P4 (lịch sử): `docs/plans/2026-06-07-phase4-training-mlflow.md`.
+**Plan P4:** `docs/plans/2026-06-07-phase4-training-mlflow.md`.
+
+### P5 — Serving (C7) — ĐÃ MERGE. (T1–T8, 41 test serving.)
+- **`src/serving/`** (10 module): `schema` (pydantic `PredictRequest`/`PredictResponse`, `ServingConfig`) · `predictor` (`LoadedModel` dispatch iforest/lstm) · **`model_loader`** (`ModelLoader` ABC + `PathModelLoader`=C0 / `RegistryModelLoader`=C1 + `create_loader` — **biến điều khiển C0/C1 deployment**) · `feature_provider` (`FeastOnlineProvider.get(imsis)` online) · `runtime` (`ServingRuntime.build/predict/reload/rollback` + JSONL records) · `records` · `app` (FastAPI: `/predict` `/health` `/model-info` `/admin/reload` `/admin/rollback`) · `cli`/`__main__`.
+- `/predict` nhận **imsi (→Feast online) HOẶC features**, trả `latency_ms`. Docker (`Dockerfile`+`docker-compose.yml`; build + `/health` smoke OK; iforest-only, không torch). **Hook cho P6:** `ServingRuntime.reload()` + `predictions.jsonl` (mỗi record có `feature_values`+`anomaly_score`+`latency_ms`). Plan: `docs/plans/2026-06-08-phase5-serving.md`.
+
+### P6 — Monitoring + auto-retrain (C8) — ĐÃ MERGE. (T1–T7, 16 test monitoring.)
+- **`src/monitoring/`**: `psi` (`compute_psi` + `PSIDriftMonitor` 3 tầng + KS) · `evidently_drift` (`evidently_drift_share`, chuẩn ngành) · `detector` (`DriftDetector.detect(ref_parquet, predictions.jsonl)` → PSI primary + Evidently cross-check) · **`retrain`** (`AutoRetrainTrigger` + `run_retrain_cycle` = **closed-loop** drift→retrain(sliding-window)→eval-gate→`reload()`; trả `retrained`+`retrain_count` cho Exp-4) · `metrics` (`add_metrics(app)` → `/metrics` Prometheus scrape-ready) · `cli` (`check`).
+- **Monitoring = năng lực C1** (KHÔNG abstraction; đối chứng = loop ON/OFF đo ở Exp-4). Drift trên covariate `feature_values`. Server Prometheus/Grafana → P7 (§9 mục 12). Plan: `docs/plans/2026-06-08-phase6-monitoring.md`.
 
 ---
 
@@ -190,7 +201,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 
 ```bash
 source .venv/bin/activate
-pytest -q && ruff check .                 # full suite (≈9s) + lint
+pytest -q && ruff check .                 # full suite 122 test (≈22s) + lint
 pytest tests/<pkg>/test_x.py -v           # 1 file
 dvc repro <stage>                         # chạy 1 DVC stage (snapshot/profile/features/d2_features/weak_labels)
 dvc status                                # trạng thái pipeline (raw_data sẽ báo "changed" — đã biết)
