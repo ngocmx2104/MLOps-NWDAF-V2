@@ -1,5 +1,7 @@
 """Shared serving-test fixtures: a small labeled parquet + trained models + a
 sqlite-MLflow registry + a materialized Feast repo. All artifacts live under tmp_path."""
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -71,3 +73,27 @@ def mlflow_registry(labeled_parquet, tmp_path, monkeypatch, _cfg):
 def sample_rows():
     """One normal-ish feature row as the API would receive it."""
     return [{f: 1.0 for f in FEATURES}]
+
+
+_REPO_SRC = Path(__file__).parents[2] / "src/features/feast_repo"
+
+
+@pytest.fixture
+def materialized_repo(tmp_path):
+    """A temp Feast repo materialized with two IMSIs (proven P3 pattern)."""
+    from src.features.feast_store import apply_and_materialize
+    repo = tmp_path / "feast_repo"
+    repo.mkdir()
+    (repo / "feature_store.yaml").write_text((_REPO_SRC / "feature_store.yaml").read_text())
+    df = pd.DataFrame({
+        "imsi": ["111", "222"],
+        "window_start": pd.to_datetime(["2024-06-26T00:00:00Z", "2024-06-26T00:05:00Z"]),
+        "n_handover": [3, 7], "n_unique_cells": [2, 2], "pingpong_count": [1, 4],
+        "pingpong_rate": [0.33, 0.57], "mean_inter_ho_s": [10.0, 5.0],
+        "std_inter_ho_s": [1.0, 0.5], "entropy_cell_seq": [0.9, 0.8],
+    })
+    src_parquet = repo / "data" / "handover_features.parquet"
+    src_parquet.parent.mkdir(parents=True)
+    df.to_parquet(src_parquet, index=False)
+    apply_and_materialize(repo, src_parquet)
+    return repo
