@@ -9,6 +9,16 @@ services:
       MLOPS_SERVING_MODEL_TYPE: iforest
       MLOPS_SERVING_MODEL_PATH: /app/models/model_iforest.joblib
       MLOPS_SERVING_OUTPUT_ROOT: /app/serving_out
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    # PREREQ (HANDOFF §9.10): a trained model must exist at ./artifacts/models/model_iforest.joblib
+    # before `up` (e.g. `dvc repro fixture train` then copy it there — see docs/runbooks/
+    # phase7-infra.md §4), else /predict fails at runtime. The healthcheck above flips the
+    # container to unhealthy instead of failing silently.
     volumes:
       - ./artifacts/models:/app/models:ro
       - ./artifacts/serving:/app/serving_out
