@@ -65,7 +65,11 @@ def run_retrain_cycle(*, predictions_path: Path, reference_path: Path, dataset_p
                           cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
     new_auc = float(result["metrics"].get("roc_auc", 0.0))
 
-    # 3. eval gate — do not deploy a model below the bar
+    # 3. eval gate — do not deploy a model below the bar. We skip reload() so the SERVING
+    # runtime keeps the prior model. KNOWN LIMIT (registry/C1 path): run_training already
+    # moved the MLflow 'staging' alias to the rejected model, so a later reload/restart
+    # would pick it up. True registry governance (gate decides alias promotion, i.e. split
+    # register-from-promote in run_training + revert alias on rejection) is deferred to P7.
     if new_auc < config.retrain_min_auc:
         append_jsonl(output_dir / "retrain_history.jsonl",
                      {"recorded_at": utc_now_iso(), "event": "retrain_rejected",
@@ -83,7 +87,10 @@ def run_retrain_cycle(*, predictions_path: Path, reference_path: Path, dataset_p
                  {"recorded_at": utc_now_iso(), "event": "retrain_deployed",
                   "new_auc": new_auc, "model_version": result.get("model_version"),
                   "model_path": result.get("model_path")})
-    return {"retrained": True, "new_auc": new_auc, "model_version": result.get("model_version"),
+    # retrain_count: cumulative when the caller threads a persistent trigger across cycles
+    # (the P8 Exp-4 harness does this -> # of auto-retrains is an RQ4 operational metric).
+    return {"retrained": True, "retrain_count": trigger._total_retrain_count,
+            "new_auc": new_auc, "model_version": result.get("model_version"),
             "model_path": result.get("model_path"), "drift": drift}
 
 
