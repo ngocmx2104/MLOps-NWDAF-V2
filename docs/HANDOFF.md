@@ -1,7 +1,7 @@
 # HANDOFF — Luận văn MLOps NWDAF (bàn giao cho agent session khác)
 
 > **Mục đích:** Bản tổng hợp đầy đủ để một AI agent ở session khác **nắm bối cảnh + bắt tay làm tiếp ngay**. Đọc file này TRƯỚC, rồi đọc `CLAUDE.md` (luật repo, auto-load) + `docs/THESIS_SPEC.md` (spec) + `docs/IMPLEMENTATION_PLAN.md` (roadmap).
-> **Cập nhật:** 2026-06-08. **Tiến độ:** **P0–P6 ĐÃ MERGE vào `main`**; **P7 (CI/CD, C1) ĐÃ MERGE vào `main`** (local fast-forward, chưa push) (8/9 phase code xong). **133 test xanh, ruff sạch** (122 + 11 mới). P7 qua subagent-driven (per-task implementer + review). P7 gồm: `ci.yml` fix (full suite, py3.14), `cd-pipeline.yml` (feature→train→eval-gate→deploy), `retrain.yml` (CT trigger), eval-gate module `src/cicd/` (governance candidate→staging — **sửa §9.13**), DVC `fixture/train/eval` DAG (C2), MLflow server + Prometheus/Grafana compose (smoke-local), §9.10 healthcheck. **Kế tiếp: P8 (Experiments + Maturity), P9 (viết luận văn).**
+> **Cập nhật:** 2026-06-08. **Tiến độ:** **P0–P6 ĐÃ MERGE vào `main`**; **P7 (CI/CD, C1) ĐÃ MERGE vào `main` + ĐÃ PUSH origin** — CI+CD GitHub Actions chạy XANH lần đầu (8/9 phase code xong). **133 test xanh, ruff sạch** (122 + 11 mới). P7 qua subagent-driven (per-task implementer + review). P7 gồm: `ci.yml` fix (full suite, py3.14), `cd-pipeline.yml` (feature→train→eval-gate→deploy), `retrain.yml` (CT trigger), eval-gate module `src/cicd/` (governance candidate→staging — **sửa §9.13**), DVC `fixture/train/eval` DAG (C2), MLflow server + Prometheus/Grafana compose (smoke-local), §9.10 healthcheck. **Kế tiếp: P8 (Experiments + Maturity), P9 (viết luận văn).**
 
 ---
 
@@ -53,7 +53,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 - **Repo cũ (nguồn để PORT, đọc-only):** `/Users/ngocmx/Thạc Sĩ/MLOps_Project` — đặc biệt `src/` (ingestion/features/training/tracking/data/experiments/serving). **KHÔNG đụng `nwdaf_mlops/` legacy.**
 - **venv:** `.venv` (Python **3.14.2**). Kích hoạt: `source .venv/bin/activate`. Cài: `pip install -e ".[dev,feast,lstm]"`.
 - **Deps chính (đã cài, qua `pyproject.toml`):** numpy/pandas/pyarrow/scipy, scikit-learn 1.9, **mlflow**, **dvc[s3]**, **evidently**, fastapi/uvicorn/pydantic, prometheus-client, psutil; extras: `[feast]`=feast 0.63, `[lstm]`=**torch>=2.6** (2.12 đã cài), `[clearml]`=clearml, `[dev]`=pytest/ruff/pre-commit.
-- **Git:** branch `main` (**P0–P6 merged**; chạy `git log -1` để xem HEAD), **KHÔNG có branch đang mở** (mỗi phase merge xong xóa branch). Remote `origin` = `git@github.com:ngocmx2104/MLOps-NWDAF-V2.git`. **CHƯA push lần nào** — toàn bộ commit local; HV tự quyết push. **P7 trở đi: tạo branch `phase7-cicd` từ main.**
+- **Git:** branch `main` (**P0–P7 merged**; chạy `git log -1` để xem HEAD), **KHÔNG có branch đang mở** (mỗi phase merge xong xóa branch). Remote `origin` = `git@github.com:ngocmx2104/MLOps-NWDAF-V2.git`. **ĐÃ push `origin/main`** (P0–P7) — `ci.yml`+`cd-pipeline.yml` chạy **XANH** lần đầu trên GitHub Actions (3.14+torch cài được trên runner, không cần fallback 3.12). HV vẫn tự quyết các push sau. **P8 trở đi: tạo branch `phaseN-*` từ main.** (Note: 1 commit doc-fix có thể đang local-ahead — sẽ ride với push code kế.)
 - **Lưu ý Python 3.14:** TensorFlow KHÔNG cài được (dùng PyTorch). Nếu lib nào khác kẹt 3.14 → có sẵn **Python 3.12.8** tại `/Library/Frameworks/Python.framework/Versions/3.12/bin/python3.12`.
 
 ---
@@ -105,7 +105,7 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | **P4** | Training + MLflow/ClearML | C4,C5,C6 | ✅ merged (IForest+PyTorch LSTM-AE, `run_training`=C0/C1/C2, MLflow/ClearML registry) |
 | **P5** | Serving | C7 | ✅ merged (FastAPI `/predict`+Feast online+rollback, ModelLoader=C0/C1 deploy, Docker) |
 | **P6** | Monitoring + auto-retrain | C8 | ✅ merged — T1–T7, PSI 3 tầng+Evidently, closed-loop drift→retrain→reload, `/metrics`; final review OK |
-| **P7** | CI/CD | C1 | ✅ **merged `main`** (local, chưa push) — `ci.yml`+`cd-pipeline.yml`+`retrain.yml`; eval-gate `src/cicd/` (governance candidate→staging); DVC `fixture/train/eval` DAG; MLflow server + Prometheus/Grafana compose (smoke-local); §9.10/§9.13 xử lý. Plan: `docs/plans/2026-06-08-phase7-cicd.md`, spec: `docs/superpowers/specs/2026-06-08-phase7-cicd-design.md` |
+| **P7** | CI/CD | C1 | ✅ **merged `main` + pushed; CI+CD GitHub Actions XANH** — `ci.yml`+`cd-pipeline.yml`+`retrain.yml`; eval-gate `src/cicd/` (governance candidate→staging); DVC `fixture/train/eval` DAG; MLflow server + Prometheus/Grafana compose (smoke-local); §9.10/§9.13 xử lý. Plan: `docs/plans/2026-06-08-phase7-cicd.md`, spec: `docs/superpowers/specs/2026-06-08-phase7-cicd-design.md` |
 | **P8** | Experiments + Maturity | đánh giá | ⬜ chưa — Exp-1..6 + ML Test Score + Wilcoxon; **chạy full `raw_data` (~60min)** |
 | **P9** | Viết luận văn | — | ⬜ chưa — LaTeX, dùng skill `academic-pipeline`; điền số liệu thật |
 
