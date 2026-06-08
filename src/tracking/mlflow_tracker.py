@@ -67,5 +67,12 @@ class MLflowTracker(BaseTracker):
             self._client.set_registered_model_alias(name, alias, mv.version)
         return f"models:/{name}/{mv.version}"
 
+    def promote_model(self, name: str, alias: str, version: str) -> str | None:
+        # Usable WITHOUT an open run (the eval-gate CLI runs in its own process): fall back
+        # to a fresh MlflowClient, which reads MLFLOW_TRACKING_URI from the environment.
+        client = self._client or MlflowClient()
+        client.set_registered_model_alias(name, alias, version)
+        return f"models:/{name}/{version}"
+
     def end_experiment(self, status: str = "FINISHED") -> None:
         mlflow.end_run(status=status)

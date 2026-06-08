@@ -34,6 +34,13 @@ class BaseTracker(ABC):
         ...
 
     @abstractmethod
+    def promote_model(self, name: str, alias: str, version: str) -> str | None:
+        """Promote an already-registered version to `alias` (e.g. candidate->staging).
+        Separates registration from promotion so an eval-gate controls deployment.
+        Noop returns None; real backends move the alias and return the model URI."""
+        ...
+
+    @abstractmethod
     def end_experiment(self, status: str = "FINISHED") -> None:
         """End the run. Callers needing the run URL should read it from the
         RunHandle returned by init_experiment."""

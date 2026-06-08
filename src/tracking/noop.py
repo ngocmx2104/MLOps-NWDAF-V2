@@ -27,5 +27,8 @@ class NoopTracker(BaseTracker):
                        alias: str | None = None) -> str | None:
         return None
 
+    def promote_model(self, name: str, alias: str, version: str) -> str | None:
+        return None
+
     def end_experiment(self, status: str = "FINISHED") -> None:
         pass

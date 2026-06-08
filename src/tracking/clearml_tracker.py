@@ -81,6 +81,16 @@ class ClearMLTracker(BaseTracker):
             task_id = self._task.id if self._task else "offline"
             return f"offline-model:{name}:{task_id}"
 
+    def promote_model(self, name: str, alias: str, version: str) -> str | None:
+        # ClearML is the SECONDARY framework (Exp-3); governance is best-effort. Offline mode
+        # has no server-side alias store -> record intent on the task, return a placeholder.
+        try:
+            if self._task is not None:
+                self._task.set_user_properties(**{f"alias_{alias}": str(version)})
+        except Exception:
+            pass
+        return f"offline-alias:{name}:{alias}:{version}"
+
     def end_experiment(self, status: str = "FINISHED") -> None:
         if self._task is not None:
             self._task.close()
