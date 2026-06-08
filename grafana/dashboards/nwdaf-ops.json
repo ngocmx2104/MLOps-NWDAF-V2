@@ -1,0 +1,19 @@
+{
+  "title": "NWDAF Serving Ops",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "Predict throughput (req/s)",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "targets": [{"expr": "rate(nwdaf_predict_requests_total[1m])", "refId": "A"}]
+    },
+    {
+      "type": "timeseries",
+      "title": "Predict latency p95 (ms)",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "targets": [{"expr": "histogram_quantile(0.95, rate(nwdaf_predict_latency_ms_bucket[5m]))", "refId": "A"}]
+    }
+  ]
+}
