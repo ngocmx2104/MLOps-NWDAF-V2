@@ -7,8 +7,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.14"
           cache: "pip"
-      - run: pip install -e ".[dev]"
+      # Install ALL extras so the full suite (feast/torch/clearml tests) runs in CI.
+      # Fallback to "3.12" above if the runner lacks a torch wheel for 3.14 (both are
+      # project-supported per HANDOFF §3).
+      - run: pip install -e ".[dev,feast,lstm,clearml]"
       - run: ruff check .
       - run: pytest
