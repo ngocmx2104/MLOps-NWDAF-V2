@@ -42,10 +42,11 @@ def build_config_from_args(args: argparse.Namespace) -> ServingConfig:
 def _cmd_serve(args: argparse.Namespace) -> None:
     import uvicorn
 
+    from src.monitoring.metrics import add_metrics
     from src.serving.app import create_app
     from src.serving.runtime import ServingRuntime
     config = build_config_from_args(args)
-    app = create_app(ServingRuntime.build(config))
+    app = add_metrics(create_app(ServingRuntime.build(config)))
     uvicorn.run(app, host=config.host, port=config.port)
 
 
