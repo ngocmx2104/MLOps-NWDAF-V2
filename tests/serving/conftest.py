@@ -56,14 +56,24 @@ def mlflow_registry(labeled_parquet, tmp_path, monkeypatch, _cfg):
     Returns (tracking_uri, first_version_number, latest_version_number)."""
     import mlflow
     from mlflow.tracking import MlflowClient
+
+    from src.cicd.eval_gate import run_eval_gate
+    from src.cicd.schema import GateConfig
+    from src.tracking import create_tracker
+
     path, _ = labeled_parquet
     uri = f"sqlite:///{tmp_path / 'mlflow.db'}"
     monkeypatch.setenv("MLFLOW_TRACKING_URI", uri)
     mlflow.set_tracking_uri(uri)
     run_training(path, model_type="iforest", backend="mlflow",
                  output_dir=tmp_path / "r1", cfg=_cfg, run_name="v_first")
-    run_training(path, model_type="iforest", backend="mlflow",
-                 output_dir=tmp_path / "r2", cfg=_cfg, run_name="v_latest")
+    latest = run_training(path, model_type="iforest", backend="mlflow",
+                          output_dir=tmp_path / "r2", cfg=_cfg, run_name="v_latest")
+    # promote the latest model to 'staging' so registry-loader tests work
+    # (min_roc_auc=0.0 -> always promote; this is test fixture setup, not a real gate)
+    run_eval_gate(metrics=latest["metrics"], model_name=latest["model_name"],
+                  model_version=latest["model_version"], tracker=create_tracker("mlflow"),
+                  cfg=GateConfig(min_roc_auc=0.0))
     versions = MlflowClient().search_model_versions("name='iforest_pingpong'")
     nums = sorted(int(mv.version) for mv in versions)
     return uri, str(nums[0]), str(nums[-1])

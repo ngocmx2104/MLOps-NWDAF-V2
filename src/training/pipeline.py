@@ -17,7 +17,7 @@ from src.training.data import (
     load_training_dataset, prepare_training_matrices, split_training_data,
 )
 from src.training.lstm_detector import train_lstm_ae
-from src.training.schema import MODEL_FAMILY, TrainingConfig
+from src.training.schema import CANDIDATE_STATE, MODEL_FAMILY, TrainingConfig
 
 # Distinct registry name per model family so a model-swap (RQ4) does NOT overwrite
 # another model's "staging" alias in a real backend. iforest keeps the canonical
@@ -65,8 +65,9 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
     model_version = tracker.register_model(str(model_path), _REGISTRY_NAMES[model_type],
                                            metrics={k: float(v) for k, v in metrics.items()
                                                     if isinstance(v, (int, float))},
-                                           alias="staging")
+                                           alias=CANDIDATE_STATE)
     tracker.end_experiment()
     return {"run_id": handle.run_id, "backend": handle.backend, "model_type": model_type,
             "model_path": str(model_path), "model_version": model_version,
+            "model_name": _REGISTRY_NAMES[model_type],
             "metrics": metrics, "train_seconds": train_seconds}

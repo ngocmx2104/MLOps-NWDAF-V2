@@ -58,14 +58,22 @@ def test_registry_loader_lstm_warns(labeled_parquet, tmp_path, monkeypatch):
     On this single node the .pt still exists at its training path, so load() succeeds."""
     import mlflow
 
+    from src.cicd.eval_gate import run_eval_gate
+    from src.cicd.schema import GateConfig
+    from src.tracking import create_tracker
     from src.training.pipeline import run_training
     from src.training.schema import TrainingConfig
     path, _ = labeled_parquet
     uri = f"sqlite:///{tmp_path / 'lstm_reg.db'}"
     monkeypatch.setenv("MLFLOW_TRACKING_URI", uri)
     mlflow.set_tracking_uri(uri)
-    run_training(path, model_type="lstm_ae", backend="mlflow", output_dir=tmp_path / "l",
-                 cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
+    out = run_training(path, model_type="lstm_ae", backend="mlflow", output_dir=tmp_path / "l",
+                       cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
+    # promote candidate -> staging so the registry loader can find the alias
+    # (min_roc_auc=0.0 -> always promote; this is test setup, not a real gate)
+    run_eval_gate(metrics=out["metrics"], model_name=out["model_name"],
+                  model_version=out["model_version"], tracker=create_tracker("mlflow"),
+                  cfg=GateConfig(min_roc_auc=0.0))
     with pytest.warns(UserWarning, match="lstm_ae"):
         lm = RegistryModelLoader("lstm_ae_pingpong", "lstm_ae", alias="staging",
                                  tracking_uri=uri).load()

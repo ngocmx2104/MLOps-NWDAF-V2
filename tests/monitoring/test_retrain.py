@@ -29,9 +29,17 @@ def test_drift_triggers_retrain_and_reload(reference_parquet, predictions_drift,
     mlflow.set_tracking_uri(uri)
     from src.training.pipeline import run_training
     from src.training.schema import TrainingConfig
-    run_training(reference_parquet, model_type="iforest", backend="mlflow",
-                 output_dir=tmp_path / "m0",
-                 cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
+    from src.cicd.eval_gate import run_eval_gate
+    from src.cicd.schema import GateConfig
+    from src.tracking import create_tracker
+    boot = run_training(reference_parquet, model_type="iforest", backend="mlflow",
+                        output_dir=tmp_path / "m0",
+                        cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
+    # bootstrap: put an initial model at 'staging' so the registry runtime can load it
+    # (min_roc_auc=0.0 -> always promote; this is test setup, not a real gate)
+    run_eval_gate(metrics=boot["metrics"], model_name=boot["model_name"],
+                  model_version=boot["model_version"], tracker=create_tracker("mlflow"),
+                  cfg=GateConfig(min_roc_auc=0.0))
     runtime = ServingRuntime.build(ServingConfig(loader="registry", model_type="iforest",
                                                  tracking_uri=uri, output_root=str(tmp_path / "s")))
     before = runtime.model.version

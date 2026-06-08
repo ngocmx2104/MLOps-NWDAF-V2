@@ -11,9 +11,12 @@ from typing import Any
 
 import pandas as pd
 
+from src.cicd.eval_gate import run_eval_gate
+from src.cicd.schema import GateConfig
 from src.monitoring.detector import DriftDetector
 from src.monitoring.schema import MonitoringConfig
 from src.serving.records import append_jsonl, utc_now_iso
+from src.tracking import create_tracker
 from src.training.data import apply_sliding_window
 from src.training.pipeline import run_training
 from src.training.schema import TrainingConfig
@@ -63,17 +66,19 @@ def run_retrain_cycle(*, predictions_path: Path, reference_path: Path, dataset_p
     result = run_training(window_path, model_type=model_type, backend=backend,
                           output_dir=output_dir / "model",
                           cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
-    new_auc = float(result["metrics"].get("roc_auc", 0.0))
-
-    # 3. eval gate — do not deploy a model below the bar. We skip reload() so the SERVING
-    # runtime keeps the prior model. KNOWN LIMIT (registry/C1 path): run_training already
-    # moved the MLflow 'staging' alias to the rejected model, so a later reload/restart
-    # would pick it up. True registry governance (gate decides alias promotion, i.e. split
-    # register-from-promote in run_training + revert alias on rejection) is deferred to P7.
-    if new_auc < config.retrain_min_auc:
+    # 3. eval gate (SHARED with the CD pipeline) — promote candidate->staging ONLY on pass.
+    # run_training registered the model under the 'candidate' alias; a rejected model never
+    # claims the 'staging' alias the serving registry-loader reads. Fixes the prior gap where
+    # reload/restart could pick up a rejected model.
+    gate = run_eval_gate(metrics=result["metrics"], model_name=result.get("model_name"),
+                         model_version=result.get("model_version"),
+                         tracker=create_tracker(backend),
+                         cfg=GateConfig(min_roc_auc=config.retrain_min_auc))
+    new_auc = gate.metrics["roc_auc"]
+    if not gate.passed:
         append_jsonl(output_dir / "retrain_history.jsonl",
                      {"recorded_at": utc_now_iso(), "event": "retrain_rejected",
-                      "new_auc": new_auc, "gate": config.retrain_min_auc})
+                      "new_auc": new_auc, "gate": config.retrain_min_auc, "reasons": gate.reasons})
         return {"retrained": False, "gate_failed": True, "new_auc": new_auc, "drift": drift}
 
     # 4. deploy — reload serving (registry-alias loaders pick up the new staging version).
