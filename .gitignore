@@ -5,6 +5,7 @@ artifacts/
 mlruns/
 mlartifacts/
 *.joblib
+*.pt
 .dvc/cache/
 .dvc/tmp/
 .env
@@ -17,3 +18,7 @@ reports/
 data/raw_ebs/
 data/features/
 data/processed/
+
+# Local tooling (editor / code-intelligence indexes — not part of the project)
+.codegraph/
+.cursor/
