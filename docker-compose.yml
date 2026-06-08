@@ -1,0 +1,14 @@
+services:
+  serving:
+    build: .
+    image: nwdaf-serving:latest
+    ports:
+      - "8080:8080"
+    environment:
+      MLOPS_SERVING_LOADER: path
+      MLOPS_SERVING_MODEL_TYPE: iforest
+      MLOPS_SERVING_MODEL_PATH: /app/models/model_iforest.joblib
+      MLOPS_SERVING_OUTPUT_ROOT: /app/serving_out
+    volumes:
+      - ./artifacts/models:/app/models:ro
+      - ./artifacts/serving:/app/serving_out
