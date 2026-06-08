@@ -38,7 +38,9 @@ def evaluate_gate(metrics: dict[str, Any], cfg: GateConfig | None = None) -> Gat
 def _version_of(model_version: str | None) -> str | None:
     if not model_version:
         return None
-    return model_version.rsplit("/", 1)[-1]  # "models:/name/3" -> "3"
+    # `or None` guards a trailing-slash URI ("models:/name/3/" -> "" -> None) so a blank
+    # version never reaches promote_model.
+    return model_version.rsplit("/", 1)[-1] or None  # "models:/name/3" -> "3"
 
 
 def run_eval_gate(*, metrics: dict[str, Any], model_name: str | None,
@@ -48,5 +50,7 @@ def run_eval_gate(*, metrics: dict[str, Any], model_name: str | None,
     result = evaluate_gate(metrics, cfg)
     version = _version_of(model_version)
     if result.passed and model_name and version is not None:
+        # promote_model returns None on the NoopTracker (C0 ablation): the gate still
+        # evaluates, but no alias side-effect happens — intended for the C0/C1 contrast.
         result.promoted_to = tracker.promote_model(model_name, cfg.staging_alias, version)
     return result
