@@ -1,0 +1,38 @@
+name: CD Pipeline
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  feature-train-gate-deploy:
+    runs-on: ubuntu-latest
+    env:
+      MLFLOW_TRACKING_URI: sqlite:///${{ github.workspace }}/mlflow.db
+      MLOPS_BACKEND: mlflow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: "pip"
+      - run: pip install -e ".[dev,feast,lstm]"
+
+      - name: Feature (synthetic fixture) + Train (register 'candidate')
+        run: |
+          python -m src.cicd fixture --output artifacts/cicd/fixture.parquet
+          python -m src.training train --dataset artifacts/cicd/fixture.parquet \
+            --output-dir artifacts/cicd/models --backend mlflow
+
+      - name: Eval-gate (promote candidate->staging or block deploy)
+        run: |
+          python -m src.cicd gate --metrics artifacts/cicd/models/training_result.json \
+            --backend mlflow --min-roc-auc 0.7 --output artifacts/cicd/gate_result.json
+
+      - name: Deploy smoke (serve registry 'staging' + /health + /predict)
+        run: |
+          python -m src.serving serve --loader registry --model-type iforest \
+            --registry-name iforest_pingpong --registry-alias staging &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:8080/health && break; sleep 1; done
+          curl -sf http://127.0.0.1:8080/health
+          curl -sf -X POST http://127.0.0.1:8080/predict -H 'content-type: application/json' \
+            -d '{"features":{"n_handover":3,"n_unique_cells":2,"pingpong_count":2,"pingpong_rate":0.6,"mean_inter_ho_s":4.0,"std_inter_ho_s":1.0,"entropy_cell_seq":0.9}}'
