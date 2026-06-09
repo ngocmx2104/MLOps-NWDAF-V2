@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import joblib
+import numpy as np
 
 from src.experiments.metrics.resource import measure_subprocess
 from src.experiments.records import append_jsonl, build_run_record
@@ -53,3 +57,44 @@ def run_experiment(spec: ConfigSpec, *, experiment_id: str, seeds: list[int],
         append_jsonl(cfg_dir / "runs.jsonl", rec)
         runs.append(rec)
     return runs
+
+
+def inference_latency_jsonl(model_path, x, out_jsonl) -> Path:
+    """Score each row of x with the joblib model, timing per-sample inference (perf_counter),
+    writing a predictions.jsonl (one record/sample, has latency_ms) for operational.latency_percentiles.
+    Note: loads a trusted first-party model produced by this same pipeline (not untrusted deserialization)."""
+    model = joblib.load(model_path)
+    out_jsonl = Path(out_jsonl)
+    x = np.asarray(x, dtype=float)
+    with out_jsonl.open("w", encoding="utf-8") as f:
+        for row in x:
+            t0 = time.perf_counter()
+            score = -model.score_samples(row.reshape(1, -1))[0]
+            dt_ms = (time.perf_counter() - t0) * 1000.0
+            f.write(json.dumps({"event": "predict", "anomaly_score": float(score),
+                                "latency_ms": dt_ms}) + "\n")
+    return out_jsonl
+
+
+def config_storage_bytes(path) -> int:
+    """Total bytes under a config's tracking dir (mlruns/registry). 0 if absent — the C0/noop case."""
+    path = Path(path)
+    if not path.exists():
+        return 0
+    if path.is_file():
+        return path.stat().st_size
+    return sum(p.stat().st_size for p in path.rglob("*") if p.is_file())
+
+
+def traceability_ok(run_record: dict, *, require_registry: bool) -> bool:
+    """Objective lineage check: a run is traceable iff it produced a run_id AND (when require_registry)
+    a registered model_version. C0/noop returns a placeholder run but no real model_version -> not
+    traceable to a governed artifact. No hand-scoring: derived from emitted fields."""
+    result = run_record.get("result") or {}
+    if run_record.get("resource", {}).get("returncode") != 0:
+        return False
+    if not result.get("run_id"):
+        return False
+    if require_registry and not result.get("model_version"):
+        return False
+    return True
