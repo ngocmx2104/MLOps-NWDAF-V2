@@ -43,7 +43,15 @@ def _to_seq(x: np.ndarray) -> torch.Tensor:
 
 def train_lstm_ae(features_path: Path, out_model_dir: Path, *, random_state: int = 42,
                   epochs: int = 30, batch_size: int = 32, encoding_dim: int = 4,
-                  threshold_percentile: float = 95.0, label_column: str = "label") -> dict[str, Any]:
+                  threshold_percentile: float = 95.0, label_column: str = "label",
+                  test_size: float = 0.2) -> dict[str, Any]:
+    """Train a PyTorch LSTM-Autoencoder anomaly detector.
+
+    The ``test_size`` / ``random_state`` / stratify-when-2-classes split logic
+    mirrors ``split_training_data`` in ``src/training/data.py``, so that LSTM-AE
+    and IsolationForest are evaluated on the same train/val proportions and
+    random seed — a prerequisite for a fair model-swap comparison (§9.7, RQ4b).
+    """
     torch.manual_seed(random_state)
     np.random.seed(random_state)
     out_model_dir = Path(out_model_dir)
@@ -54,7 +62,7 @@ def train_lstm_ae(features_path: Path, out_model_dir: Path, *, random_state: int
     y = df[label_column].to_numpy() if label_column in df.columns else None
     x_tr, x_val, _, y_val = train_test_split(
         x_raw, y if y is not None else np.zeros(len(x_raw)),
-        test_size=0.2, random_state=random_state,
+        test_size=test_size, random_state=random_state,
         stratify=y if (y is not None and len(set(y.tolist())) > 1) else None,
     )
     scaler = StandardScaler().fit(x_tr)
