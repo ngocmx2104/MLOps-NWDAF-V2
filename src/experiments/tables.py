@@ -96,6 +96,84 @@ def exp2_table(summary: dict[str, Any]) -> list[dict[str, Any]]:
     return rows
 
 
+def exp4_table(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract per-scenario drift rows from an Exp-4 (drift + retrain ON/OFF) summary dict.
+
+    Each row has keys: ``scenario``, ``drift_detected_any``, ``detection_latency_steps``,
+    ``retrain_on``, ``retrain_off``.
+    Reads from ``summary["scenarios"]``; missing keys → "N/A".
+    """
+    scenarios = summary.get("scenarios") or {}
+    rows: list[dict[str, Any]] = []
+    for name, data in scenarios.items():
+        if not isinstance(data, dict):
+            continue
+        on = data.get("on") or {}
+        off = data.get("off") or {}
+        rows.append({
+            "scenario": name,
+            "drift_detected_any": on.get("drift_detected_any", "N/A"),
+            "detection_latency_steps": on.get("detection_latency_steps", "N/A"),
+            "retrain_on": on.get("retrain_count", "N/A"),
+            "retrain_off": off.get("retrain_count", "N/A"),
+        })
+    return rows
+
+
+def exp5_table(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract per-model comparison rows from an Exp-5 (model-swap IForest vs LSTM-AE) summary dict.
+
+    Each row has keys: ``model``, ``roc_auc_mean``, ``pr_auc_mean``, ``f1_mean``,
+    ``train_wall_s_mean``, ``n_ok``.
+    Reads from ``summary["iforest"]`` and ``summary["lstm_ae"]``; missing keys → "N/A".
+    """
+    rows: list[dict[str, Any]] = []
+    swap_core_changes = summary.get("swap_core_changes", "N/A")
+    for model_key in ("iforest", "lstm_ae"):
+        data = summary.get(model_key) or {}
+        perf = data.get("model_perf") or {}
+        train_wall = data.get("train_wall_s") or {}
+
+        def _mean(stats: dict) -> Any:
+            if isinstance(stats, dict):
+                return stats.get("mean", "N/A")
+            return "N/A"
+
+        rows.append({
+            "model": model_key,
+            "roc_auc_mean": _mean(perf.get("roc_auc")),
+            "pr_auc_mean": _mean(perf.get("pr_auc")),
+            "f1_mean": _mean(perf.get("f1")),
+            "train_wall_s_mean": _mean(train_wall),
+            "n_ok": data.get("n_ok", "N/A"),
+            "swap_core_changes": swap_core_changes,
+        })
+    return rows
+
+
+def exp6_table(summary: dict[str, Any]) -> list[dict[str, Any]]:
+    """Extract per-modification rows from an Exp-6 (modifiability) summary dict.
+
+    Each row has keys: ``mod_id``, ``section``, ``files_changed``, ``lines_changed``,
+    ``regression_count``, ``pass``.
+    Reads from ``summary["mods"]``; missing keys → "N/A".
+    """
+    mods = summary.get("mods") or []
+    rows: list[dict[str, Any]] = []
+    for mod in mods:
+        if not isinstance(mod, dict):
+            continue
+        rows.append({
+            "mod_id": mod.get("mod_id", "N/A"),
+            "section": mod.get("section", "N/A"),
+            "files_changed": mod.get("files_changed", "N/A"),
+            "lines_changed": mod.get("lines_changed", "N/A"),
+            "regression_count": mod.get("regression_count", "N/A"),
+            "pass": mod.get("pass", "N/A"),
+        })
+    return rows
+
+
 def exp3_table(summary: dict[str, Any]) -> list[dict[str, Any]]:
     """Extract per-backend overhead + governance rows from an Exp-3 (framework) summary dict.
 

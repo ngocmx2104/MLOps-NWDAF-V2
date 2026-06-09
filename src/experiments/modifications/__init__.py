@@ -130,3 +130,8 @@ NWDAF_MODS: list[Modification] = [
     MOD_CHANGE_PINGPONG_RULE,
     MOD_CHANGE_PSI_THRESHOLD,
 ]
+
+
+def get_default_mods() -> list[Modification]:
+    """Return the 3 default NWDAF-specific modifications for Exp-6."""
+    return list(NWDAF_MODS)
