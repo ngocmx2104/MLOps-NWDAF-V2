@@ -23,22 +23,25 @@ def _verify(pointer: dict[str, Any], repo_root: Path) -> bool:
     return False
 
 
-def assess(manifest: dict[str, Any], *, repo_root: Path) -> dict[str, Any]:
-    """ML Test Score (Breck 2017): credit a test's score ONLY if at least one evidence pointer
-    verifies. Final score = MIN over the 4 sections. Also derive Google/Azure present/absent."""
+def assess(manifest: dict[str, Any], *, repo_root: Path, capability: str = "C1") -> dict[str, Any]:
+    """ML Test Score (Breck 2017). capability='C1' credits any test whose evidence verifies;
+    capability='C0' additionally forces requires_mlops tests to 0 (an ad-hoc pipeline lacks the
+    MLOps artifact), giving an objective C0-vs-C1 maturity delta. Final score = MIN over 4 sections."""
     repo_root = Path(repo_root)
     per_test: dict[str, Any] = {}
     verified: dict[str, bool] = {}
     section_scores = {s: 0.0 for s in _SECTIONS}
     for t in manifest.get("tests", []):
-        ok = any(_verify(p, repo_root) for p in t.get("evidence", []))
+        masked = capability == "C0" and bool(t.get("requires_mlops", False))
+        ok = (not masked) and any(_verify(p, repo_root) for p in t.get("evidence", []))
         verified[t["id"]] = ok
         credited = float(t["score"]) if ok else 0.0
-        per_test[t["id"]] = {"section": t["section"], "claimed": t["score"], "credited": credited}
+        per_test[t["id"]] = {"section": t["section"], "claimed": t["score"], "credited": credited,
+                             "requires_mlops": bool(t.get("requires_mlops", False))}
         if t["section"] in section_scores:
             section_scores[t["section"]] += credited
     ml_test_score = min(section_scores.values()) if section_scores else 0.0
-    return {"section_scores": section_scores, "ml_test_score": ml_test_score,
+    return {"section_scores": section_scores, "ml_test_score": ml_test_score, "capability": capability,
             "per_test": per_test, "verified": verified,
             "google_level": _google_level(ml_test_score),
             "azure_level": _azure_level(section_scores)}
