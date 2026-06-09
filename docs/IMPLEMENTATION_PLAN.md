@@ -32,7 +32,8 @@ P0 Scaffold ─► P1 Ingestion ─► P2 Synthetic ─► P3 Features+Feast ─
 | **P5** | Serving | C7 | FastAPI `/predict` (lấy online feature từ Feast), `/health`, hot-reload, rollback; Docker | serve model registered; `/predict` trả score+latency; container chạy; rollback về version khác OK | RQ2 · Exp-1 |
 | **P6** | Monitoring + auto-retrain | C8 | PSI 3 tầng + Evidently drift + system metrics (Prometheus/Grafana) + retrain trigger | phát hiện drift trên 3 kịch bản (recall/FPR); Prometheus scrape; **drift→auto-retrain** kích hoạt đúng | RQ4 · Exp-4 |
 | **P7** | CI/CD | C1 | ✅ **MERGED `main`** (local, chưa push) — `ci.yml` (full suite, 3.14), `cd-pipeline.yml` (feature→train→**eval-gate**→deploy), `retrain.yml` (CT trigger), eval-gate module `src/cicd/` (governance candidate→staging, sửa §9.13), DVC `fixture/train/eval` DAG (C2), MLflow server + Prometheus/Grafana compose (smoke-local), §9.10 healthcheck | eval-gate chặn model kém ✓; DVC repro DAG ✓; e2e local smoke (gate→staging→serve→/predict) ✓; DORA/overhead đo ở P8 | RQ3 · maturity |
-| **P8** | Experiments + Maturity | đánh giá | Harness + Exp-1..6 + **ML Test Score assessor** + Wilcoxon + summaries | mỗi Exp ra `*_summary.json`; ablation C0 vs C1 trên 6 metrics; framework cmp; maturity score từ artifact | RQ1-4 (toàn bộ) |
+| **P8a** | Measurement foundation | đánh giá | ✅ **MERGED `main`** — `src/experiments/` (harness N-run subprocess + 6 metric collectors + Wilcoxon/bootstrap CI + **ML Test Score assessor** evidence-auto-verify + provenance §9.6); unit-test trên synthetic, KHÔNG sinh số liệu kết quả | 152 test xanh, ruff sạch; `python -m src.experiments assess` chạy trên manifest thật (mọi điểm credit phải verify được) ✓; collector gắn 1 nhóm metric ✓ | RQ3 · maturity |
+| **P8b** | Experiments + result tables | đánh giá | Exp-1..6 runners + `raw_data` full run + result tables (nạp dữ liệu thật vào hạ tầng P8a) | mỗi Exp ra `*_summary.json`; ablation C0 vs C1 trên 6 metrics; framework cmp; maturity score từ artifact; Wilcoxon N≥10 | RQ1-4 (toàn bộ) |
 | **P9** | Viết luận văn | — | Migrate LaTeX template; điền kết quả thật; dùng `academic-pipeline` để draft/review | các chương có số liệu thật từ `artifacts/`; không placeholder | — |
 
 ## Ánh xạ Experiment → RQ → Phase tạo điều kiện
@@ -68,6 +69,6 @@ P0 Scaffold ─► P1 Ingestion ─► P2 Synthetic ─► P3 Features+Feast ─
 2. **M2 (sau P4):** train→registry→ "model production" reproducible; C0/C1 + model-swap chạy.
 3. **M3 (sau P6):** serving + drift→auto-retrain closed-loop hoạt động trên kịch bản drift.
 4. **M4 (sau P7):** CI/CD tự động hóa pipeline + eval-gate → đạt MLOps Level 1(→2).
-5. **M5 (sau P8):** đủ số liệu 6 nhóm metrics + maturity cho cả 4 RQ → sẵn sàng viết.
+5. **M5 (sau P8b):** đủ số liệu 6 nhóm metrics + maturity cho cả 4 RQ → sẵn sàng viết. (P8a = hạ tầng đo đã xong; P8b nạp dữ liệu thật.)
 
 > Chi tiết bite-sized từng phase: `docs/plans/<date>-phaseN-*.md` (tạo just-in-time trước khi execute mỗi phase).
