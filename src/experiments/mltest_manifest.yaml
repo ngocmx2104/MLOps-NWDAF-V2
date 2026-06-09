@@ -136,7 +136,7 @@ tests:
     score: 1
     requires_mlops: false
     evidence:
-      - {kind: pytest, ref: "tests/training/test_pipeline.py"}
+      - {kind: pytest, ref: "tests/training/test_lstm_detector.py"}
 
   # I2: CI full test suite runs on every push (GitHub Actions)
   - id: infra_2_ci_full_suite
