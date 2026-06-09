@@ -42,6 +42,8 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
         backend=backend or "noop", tags={"model": model_type}))
 
     t0 = time.perf_counter()
+    fit_summary: dict = {}
+    validation_summary: dict = {}
     if model_type == "iforest":
         df, ctx, _ = load_training_dataset(dataset_path, cfg)
         x, y = prepare_training_matrices(df, cfg)
@@ -50,6 +52,8 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
         model_path = output_dir / f"model_iforest_s{cfg.random_state}.joblib"
         joblib.dump(result.model, model_path)
         metrics = result.metrics
+        fit_summary = result.fit_summary
+        validation_summary = result.validation_summary
     elif model_type == "lstm_ae":
         out = train_lstm_ae(dataset_path, output_dir / f"lstm_s{cfg.random_state}",
                             random_state=cfg.random_state,
@@ -75,4 +79,5 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
     return {"run_id": handle.run_id, "backend": handle.backend, "model_type": model_type,
             "model_path": str(model_path), "model_version": model_version,
             "model_name": _REGISTRY_NAMES[model_type],
-            "metrics": metrics, "train_seconds": train_seconds}
+            "metrics": metrics, "train_seconds": train_seconds,
+            "fit_summary": fit_summary, "validation_summary": validation_summary}

@@ -46,6 +46,7 @@ def train_isolation_forest(
     val_pred = (model.predict(x_val) == -1).astype(int)
 
     metrics: dict[str, float] = {}
+    confusion: dict[str, int] = {}
     if y_val is not None and len(set(y_val.tolist())) > 1:
         metrics = {
             "precision": float(precision_score(y_val, val_pred, zero_division=0)),
@@ -53,6 +54,14 @@ def train_isolation_forest(
             "f1": float(f1_score(y_val, val_pred, zero_division=0)),
             "roc_auc": float(roc_auc_score(y_val, val_scores)),
             "pr_auc": float(average_precision_score(y_val, val_scores)),
+        }
+        yv = np.asarray(y_val)
+        vp = np.asarray(val_pred)
+        confusion = {
+            "tp": int(((vp == 1) & (yv == 1)).sum()),
+            "fp": int(((vp == 1) & (yv == 0)).sum()),
+            "fn": int(((vp == 0) & (yv == 1)).sum()),
+            "tn": int(((vp == 0) & (yv == 0)).sum()),
         }
 
     fit_summary = {
@@ -67,5 +76,6 @@ def train_isolation_forest(
         "validation_score_summary": _describe_scores(val_scores),
         "validation_has_labels": y_val is not None,
         "predicted_anomaly_rate": float(np.mean(val_pred)),
+        "confusion": confusion,
     }
     return TrainingResult(model=model, metrics=metrics, fit_summary=fit_summary, validation_summary=validation_summary)
