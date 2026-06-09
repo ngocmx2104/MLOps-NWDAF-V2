@@ -1,28 +1,253 @@
-# ML Test Score evidence manifest (Breck et al. 2017). score: 0 | 0.5 (manual) | 1 (automated).
+# ML Test Score evidence manifest (Breck et al. 2017): 28 tests x {0|0.5|1}, MIN over 4 sections.
 # Each test credited ONLY if >=1 evidence pointer verifies (see src/experiments/maturity.py).
+# requires_mlops: true => test is zeroed under capability='C0' (no MLOps layer).
 tests:
-  - id: data_3_feature_code_tested
+
+  # ---- DATA (7) ----
+
+  # D1: Feature schema is code-reviewed and versioned
+  - id: data_1_feature_schema
     section: data
     score: 1
+    requires_mlops: false
     evidence:
-      - {kind: path, ref: "src/features/quality.py"}
+      - {kind: path, ref: "src/features/schema.py"}
+
+  # D2: Feature quality checks (range / nulls / dtype assertions)
+  - id: data_2_feature_quality_checks
+    section: data
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/features/test_quality.py"}
+
+  # D3: Weak-label logic is tested (ping-pong labelling function)
+  - id: data_3_weak_label_logic
+    section: data
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: symbol, ref: "apply_weak_labels"}
+      - {kind: pytest, ref: "tests/features/test_weak_labels.py"}
+
+  # D4: Ingestion data-quality checks (EBS parse + schema validation)
+  - id: data_4_ingestion_quality
+    section: data
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/ingestion/test_quality.py"}
+
+  # D5: Data versioning (DVC pipeline)
+  - id: data_5_versioned_dvc
+    section: data
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: path, ref: "dvc.yaml"}
+
+  # D6: Feature store (Feast online/offline train-serve consistency)
+  - id: data_6_feature_store_consistency
+    section: data
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: path, ref: "src/features/feast_store.py"}
+      - {kind: pytest, ref: "tests/features/test_feast_store.py"}
+
+  # D7: Synthetic data calibrated from real EBS (reproducible, seeded)
+  - id: data_7_synthetic_calibrated
+    section: data
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/data/test_synthetic_generator.py"}
+      - {kind: symbol, ref: "generate_synthetic_data"}
+
+  # ---- MODEL (7) ----
+
+  # M1: Offline evaluation metrics (ROC-AUC / PR-AUC / F1) computed automatically
+  - id: model_1_offline_metrics
+    section: model
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: symbol, ref: "compute_model_metrics"}
+      - {kind: pytest, ref: "tests/experiments/test_model_perf.py"}
+
+  # M2: Training pipeline is tested end-to-end (IsolationForest core + pipeline)
+  - id: model_2_training_pipeline_tested
+    section: model
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/training/test_core.py"}
+      - {kind: pytest, ref: "tests/training/test_pipeline.py"}
+
+  # M3: LSTM-AE alternative model is tested (model-swap / RQ4 flexibility)
+  - id: model_3_model_swap_tested
+    section: model
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/training/test_lstm_detector.py"}
+      - {kind: symbol, ref: "train_lstm_ae"}
+
+  # M4: Training emits fit summary (feature list, n_train_rows — model provenance)
+  - id: model_4_fit_summary_emitted
+    section: model
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/training/test_result_summary.py"}
+      - {kind: symbol, ref: "train_isolation_forest"}
+
+  # M5: Lineage / provenance params logged to tracker (dataset_id, feature_version, snapshot_id)
+  - id: model_5_lineage_logged
+    section: model
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/training/test_provenance.py"}
+
+  # M6: Model registry (MLflow register + alias promotion)
+  - id: model_6_registry_versioned
+    section: model
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/tracking/test_promote_model.py"}
+      - {kind: symbol, ref: "register_model"}
+
+  # M7: MLflow tracker integration tested (run_id, params, metrics logging)
+  - id: model_7_tracking_integration
+    section: model
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/training/test_pipeline_mlflow.py"}
+      - {kind: pytest, ref: "tests/tracking/test_mlflow_tracker.py"}
+
+  # ---- INFRASTRUCTURE (7) ----
+
+  # I1: Training pipeline is reproducible (fixed-seed determinism test)
   - id: infra_1_training_reproducible
     section: infrastructure
     score: 1
+    requires_mlops: false
     evidence:
-      - {kind: pytest, ref: "tests/training/test_pipeline_mlflow.py"}
-  - id: infra_5_ci_full_suite
+      - {kind: pytest, ref: "tests/training/test_pipeline.py"}
+
+  # I2: CI full test suite runs on every push (GitHub Actions)
+  - id: infra_2_ci_full_suite
     section: infrastructure
     score: 1
+    requires_mlops: true
     evidence:
       - {kind: workflow, ref: "ci.yml"}
-  - id: monitor_1_drift_detection
+
+  # I3: CD pipeline: feature -> train -> eval-gate -> deploy (GitHub Actions)
+  - id: infra_3_cd_pipeline
+    section: infrastructure
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: workflow, ref: "cd-pipeline.yml"}
+
+  # I4: Eval-gate blocks deployment below quality threshold
+  - id: infra_4_eval_gate
+    section: infrastructure
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/cicd/test_eval_gate.py"}
+      - {kind: symbol, ref: "evaluate_gate"}
+
+  # I5: Serving API tested (FastAPI /predict, /health, /model-info)
+  - id: infra_5_serving_api_tested
+    section: infrastructure
+    score: 1
+    requires_mlops: false
+    evidence:
+      - {kind: pytest, ref: "tests/serving/test_app.py"}
+
+  # I6: Containerisation (Dockerfile + docker-compose for serving + monitoring)
+  - id: infra_6_containerised
+    section: infrastructure
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: path, ref: "Dockerfile"}
+      - {kind: path, ref: "docker-compose.yml"}
+
+  # I7: Registry-backed serving + rollback tested end-to-end (C1 path)
+  - id: infra_7_registry_serving_rollback
+    section: infrastructure
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/serving/test_e2e_c1.py"}
+
+  # ---- MONITORING (7) ----
+
+  # MO1: PSI drift monitor (3-tier alert) is tested
+  - id: monitor_1_psi_3tier
     section: monitoring
     score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/monitoring/test_psi.py"}
+      - {kind: symbol, ref: "PSIDriftMonitor"}
+
+  # MO2: Drift detector (PSI + Evidently cross-check) is tested
+  - id: monitor_2_drift_detector
+    section: monitoring
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/monitoring/test_detector.py"}
+      - {kind: symbol, ref: "DriftDetector"}
+
+  # MO3: Evidently drift share cross-check tested (independent drift signal)
+  - id: monitor_3_evidently_crosscheck
+    section: monitoring
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: pytest, ref: "tests/monitoring/test_evidently_drift.py"}
+      - {kind: symbol, ref: "evidently_drift_share"}
+
+  # MO4: Auto-retrain trigger (cooldown + drift threshold) is tested
+  - id: monitor_4_auto_retrain_trigger
+    section: monitoring
+    score: 1
+    requires_mlops: true
     evidence:
       - {kind: pytest, ref: "tests/monitoring/test_retrain.py"}
-  - id: model_2_offline_metrics
-    section: model
+      - {kind: symbol, ref: "AutoRetrainTrigger"}
+
+  # MO5: Prometheus /metrics endpoint exposes predict counter + latency histogram
+  - id: monitor_5_prometheus_metrics
+    section: monitoring
     score: 1
+    requires_mlops: true
     evidence:
-      - {kind: symbol, ref: "compute_model_metrics"}
+      - {kind: pytest, ref: "tests/monitoring/test_metrics.py"}
+      - {kind: symbol, ref: "add_metrics"}
+
+  # MO6: Prometheus scrape config + Grafana compose (observability infra declared)
+  - id: monitor_6_prometheus_scrape_config
+    section: monitoring
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: path, ref: "prometheus/prometheus.yml"}
+      - {kind: path, ref: "docker-compose.monitoring.yml"}
+
+  # MO7: Continuous-training (retrain) workflow scheduled (GitHub Actions cron)
+  - id: monitor_7_retrain_workflow
+    section: monitoring
+    score: 1
+    requires_mlops: true
+    evidence:
+      - {kind: workflow, ref: "retrain.yml"}
