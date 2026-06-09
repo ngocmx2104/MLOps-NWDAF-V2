@@ -23,3 +23,15 @@ def business_metrics(y_true, y_pred, *, c_fp: float, c_fn: float,
     if window_hours:
         out["detections_per_hour"] = int(np.sum(y_pred == 1)) / window_hours
     return out
+
+
+def cost_sensitivity_curve(*, fp: int, fn: int, c_fp: float, ratios: list[float]) -> list[dict[str, Any]]:
+    """Report expected_cost across a range of cost ratios r = C(FN)/C(FP) (Elkan 2001), instead of
+    committing to a single subjective cost. C(FP) fixed; C(FN) = r * C(FP). One row per ratio.
+    Takes confusion counts directly (fp, fn) — the experiment harness reads these from the emitted
+    validation_summary.confusion rather than holding per-sample predictions."""
+    out: list[dict[str, Any]] = []
+    for r in ratios:
+        c_fn = r * c_fp
+        out.append({"ratio": r, "c_fp": c_fp, "c_fn": c_fn, "expected_cost": fp * c_fp + fn * c_fn})
+    return out
