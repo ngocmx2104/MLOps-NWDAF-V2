@@ -60,7 +60,12 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
         raise ValueError(f"Unknown model_type={model_type!r}")
     train_seconds = time.perf_counter() - t0
 
-    tracker.log_params({**cfg.to_dict(), "model_type": model_type})
+    params = {**cfg.to_dict(), "model_type": model_type}
+    if model_type == "iforest":
+        params.update({"dataset_id": ctx.dataset_id, "feature_version": ctx.feature_version,
+                       "source_snapshot_id": ctx.source_snapshot_id,
+                       "dataset_layer": ctx.dataset_layer, "row_count": ctx.row_count})
+    tracker.log_params(params)
     tracker.log_metrics({k: float(v) for k, v in metrics.items() if isinstance(v, (int, float))})
     model_version = tracker.register_model(str(model_path), _REGISTRY_NAMES[model_type],
                                            metrics={k: float(v) for k, v in metrics.items()
