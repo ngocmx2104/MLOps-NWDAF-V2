@@ -57,6 +57,7 @@ def run_training(dataset_path: Path, *, model_type: str = "iforest",
     elif model_type == "lstm_ae":
         out = train_lstm_ae(dataset_path, output_dir / f"lstm_s{cfg.random_state}",
                             random_state=cfg.random_state,
+                            test_size=cfg.test_size,
                             label_column=cfg.label_column if cfg.label_column else "label")
         model_path = Path(out["model_path"])
         metrics = out["metrics"]
