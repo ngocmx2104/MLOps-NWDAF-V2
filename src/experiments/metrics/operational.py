@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -46,8 +47,6 @@ def dora_metrics(events: list[dict[str, Any]], *, window_days: float) -> dict[st
 def events_from_logs(deployment_jsonl: Path | None, retrain_jsonl: Path | None) -> list[dict[str, Any]]:
     """Adapter: serving deployment_history.jsonl + monitoring retrain_history.jsonl -> normalized
     events. deploy = {event:deploy} or {event:retrain_deployed}; deploy_failed = retrain_rejected."""
-    from datetime import datetime
-
     def _ts(iso: str) -> float:
         return datetime.fromisoformat(iso).timestamp()
 

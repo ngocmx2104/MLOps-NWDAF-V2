@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import yaml
@@ -10,7 +11,17 @@ from src.experiments.records import write_json
 
 
 def cmd_assess(args: argparse.Namespace) -> int:
-    manifest = yaml.safe_load(Path(args.manifest).read_text())
+    try:
+        manifest = yaml.safe_load(Path(args.manifest).read_text())
+    except FileNotFoundError as exc:
+        print(f"[error] cannot load manifest: {exc}", file=sys.stderr)
+        return 1
+    except yaml.YAMLError as exc:
+        print(f"[error] cannot load manifest: {exc}", file=sys.stderr)
+        return 1
+    if not isinstance(manifest, dict):
+        print(f"[error] cannot load manifest: expected a mapping, got {type(manifest).__name__}", file=sys.stderr)
+        return 1
     report = assess(manifest, repo_root=Path(args.repo_root))
     if args.output:
         write_json(Path(args.output), report)

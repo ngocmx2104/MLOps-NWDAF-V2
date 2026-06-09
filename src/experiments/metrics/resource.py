@@ -13,7 +13,9 @@ import psutil
 def measure_subprocess(cmd: list[str], *, env: dict[str, str] | None = None,
                        sample_interval: float = 0.02, timeout: float | None = None) -> dict[str, Any]:
     """Cost/Resource group. Run cmd as a subprocess, sampling peak RSS + CPU via psutil
-    while it lives, and wall time via perf_counter. Isolated process => honest measurement."""
+    while it lives, and wall time via perf_counter. Isolated process => honest measurement.
+    Note: psutil's first cpu_percent(interval=None) call always returns 0.0 (baseline calibration),
+    so cpu_pct_mean is slightly biased low for very short-lived processes."""
     full_env = {**dict(os.environ), **(env or {})}
     t0 = time.perf_counter()
     proc = subprocess.Popen(cmd, env=full_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

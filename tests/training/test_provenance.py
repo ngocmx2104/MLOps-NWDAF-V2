@@ -20,4 +20,4 @@ def test_training_logs_lineage_tags(labeled_features, tmp_path, monkeypatch):
     path, _ = labeled_features
     run_training(path, model_type="iforest", backend="noop", output_dir=tmp_path / "m",
                  cfg=TrainingConfig(use_labels_for_evaluation=True, label_column="label"))
-    assert "dataset_id" in captured and "feature_version" in captured and "source_snapshot_id" in captured
+    assert {"dataset_id", "feature_version", "source_snapshot_id", "dataset_layer", "row_count"}.issubset(captured)
