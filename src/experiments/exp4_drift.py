@@ -80,18 +80,34 @@ def run_exp4_scenario(
 
     base_df = pd.read_parquet(baseline_path)
     drift_df = pd.read_parquet(drift_path)
+    # Step the drift scenario in TEMPORAL order (sorted by window_start) so gradual/recurring
+    # drift accumulates across steps. Random sampling would scramble the time progression and
+    # make slow drift look undetectable -- a harness artifact, not a real detector property.
+    if "window_start" in drift_df.columns:
+        drift_df = drift_df.sort_values("window_start").reset_index(drop=True)
+    if "window_start" in base_df.columns:
+        base_df = base_df.sort_values("window_start").reset_index(drop=True)
 
-    # Step layout: first half uses baseline (pre-onset), second half uses drift (post-onset)
+    # Step layout: first half uses baseline (pre-onset); second half steps THROUGH the drift file
     onset = n_steps // 2
+    n_drift_steps = max(1, n_steps - onset)
+    drift_win = max(1, len(drift_df) // n_drift_steps)
+    base_win = max(1, len(base_df) // max(1, onset))
 
     step_flags: list[bool] = []
     detection_latency: int | None = None
     retrain_count = 0
 
     for k in range(n_steps):
-        src = base_df if k < onset else drift_df
-        # Take a fixed-size window per step (no accumulation)
-        window = src.sample(frac=1.0, random_state=k).head(max(1, len(src) // n_steps))
+        if k < onset:
+            src = base_df
+            window = base_df.iloc[k * base_win:(k + 1) * base_win]
+        else:
+            src = drift_df
+            j = k - onset
+            window = drift_df.iloc[j * drift_win:(j + 1) * drift_win]
+        if window.empty:
+            window = src.head(max(1, len(src) // n_steps))
 
         pred_path = _write_step_predictions(
             window, output_root / f"step_{k}_pred.jsonl"
