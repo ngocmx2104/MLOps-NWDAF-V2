@@ -79,7 +79,7 @@ def run_exp2(
     c0_workload: list[str],
     c1_workload: list[str],
     c1_env: dict[str, str] | None = None,
-    c1_store_dir: Path | None = None,
+    c1_store_dir: Path,
     repo_root: Path = Path("."),
 ) -> dict[str, Any]:
     """Exp-2 capability ablation C0 (noop) vs C1 (mlflow).
@@ -88,9 +88,12 @@ def run_exp2(
     ----------
     c1_store_dir:
         Directory where C1's MLflow tracking store lives (sqlite DB + artifacts).
-        FIX 1: we measure this directory's total bytes as the tracking overhead;
-        C0/noop writes nothing there (0 bytes).  If None, falls back to summing
-        run_dir bytes (the original plan — Δ may be ≈0 for small runs).
+        REQUIRED.  FIX 1: we measure this directory's total bytes as the
+        tracking overhead; C0/noop writes nothing there (0 bytes).
+        storage_delta_bytes = config_storage_bytes(c1_store_dir) - 0.
+        Passing None is an error — the run_dir-summing fallback has been
+        removed because it would misattribute model bytes (which C0 also
+        writes) as MLflow overhead, producing a fake Δ.
     """
     output_root = Path(output_root)
     repo_root = Path(repo_root)
@@ -118,13 +121,26 @@ def run_exp2(
     # 1) model_perf — CONTROL (expect C0 ≈ C1; same seed/model)
     # ------------------------------------------------------------------
     perf: dict[str, Any] = {}
-    control_equal = True
+    # FIX 2: control_equal must NOT be a vacuous True when we have no data to
+    # compare.  Start as None and set to True/False only if at least one metric
+    # key was actually compared across both configs.
+    control_equal: bool | None = None
+    keys_compared = 0
     for k in _PERF_KEYS:
         a, b = _perf_vals(c0_ok, k), _perf_vals(c1_ok, k)
         if a and b:
             perf[k] = {"C0": summarize(a), "C1": summarize(b)}
+            keys_compared += 1
+            # Start from True on first real comparison, then flip if any key
+            # differs meaningfully.
+            if control_equal is None:
+                control_equal = True
             if abs(summarize(a)["mean"] - summarize(b)["mean"]) > 1e-6:
                 control_equal = False
+    if keys_compared == 0:
+        # No overlapping perf data → cannot certify anything.
+        control_equal = None
+        perf["control_equal_note"] = "insufficient data — no overlapping perf keys compared"
     perf["control_equal"] = control_equal
     perf["note"] = (
         "CONTROL — same seed/model; near-equal detection proves C0 is not a straw-man"
@@ -144,7 +160,11 @@ def run_exp2(
             operational["wilcoxon_wall_s"] = wilcoxon_compare(w0, w1)
         else:
             operational["wilcoxon_wall_s"] = {
-                "note": f"n={len(w0)} — need ≥2 matched pairs; collect more seeds"
+                "note": (
+                    f"n_c0={len(w0)}, n_c1={len(w1)} — unequal pairs"
+                    if len(w0) != len(w1)
+                    else f"n_c0={len(w0)}, n_c1={len(w1)} — need ≥2 matched pairs; collect more seeds"
+                )
             }
     else:
         operational["wilcoxon_wall_s"] = {"note": "no successful runs"}
@@ -155,16 +175,19 @@ def run_exp2(
     rss0 = [r["resource"]["peak_rss_mb"] for r in c0_ok]
     rss1 = [r["resource"]["peak_rss_mb"] for r in c1_ok]
 
-    # FIX 1: measure the C1 tracking store (db + artifacts) as the real overhead.
+    # FIX 1: c1_store_dir is now REQUIRED (see signature).  Raise loudly if somehow
+    # None slips through at runtime (e.g. called via **kwargs unpacking).
+    if c1_store_dir is None:
+        raise ValueError(
+            "c1_store_dir is required to measure tracking-store overhead honestly. "
+            "Pass the directory that contains C1's MLflow sqlite DB + mlartifacts. "
+            "The run_dir-summing fallback has been removed because it misattributes "
+            "model bytes (which C0 also writes) as MLflow overhead."
+        )
+    # Measure the C1 tracking store (db + artifacts) as the real overhead.
     # C0/noop writes NO tracking store, so its tracking bytes = 0.
-    if c1_store_dir is not None:
-        store_bytes_c1 = config_storage_bytes(Path(c1_store_dir))
-        store_scope = "c1_store_dir (sqlite DB + mlartifacts)"
-    else:
-        # Fallback (original plan): sum run_dirs — may give Δ≈0 on small runs.
-        store_bytes_c1 = sum(config_storage_bytes(Path(r["run_dir"])) for r in c1_ok)
-        store_scope = "run_dirs (fallback — may underestimate MLflow overhead)"
-
+    store_bytes_c1 = config_storage_bytes(Path(c1_store_dir))
+    store_scope = "c1_store_dir (sqlite DB + mlartifacts)"
     store_bytes_c0 = 0  # noop/C0 writes no tracking store
 
     resource: dict[str, Any] = {
@@ -179,10 +202,16 @@ def run_exp2(
     # ------------------------------------------------------------------
     # 4) maturity — ML Test Score C0 vs C1 (FIX 2: traceability gate)
     # ------------------------------------------------------------------
-    manifest_path = repo_root / _MANIFEST_REL
-    manifest: dict[str, Any] = {}
-    if manifest_path.exists():
-        manifest = yaml.safe_load(manifest_path.read_text())
+    manifest_path = (repo_root / _MANIFEST_REL).resolve()
+    # FIX 4: missing manifest must fail loudly, not silently produce assess({})
+    # → C0=0/C1=0/delta=0 which would invalidate the RQ3 maturity finding.
+    if not manifest_path.exists():
+        raise FileNotFoundError(
+            f"ML Test Score manifest not found at: {manifest_path}\n"
+            "Run from the repo root or pass repo_root= explicitly. "
+            "Creating an empty manifest is forbidden — the maturity result would be meaningless."
+        )
+    manifest: dict[str, Any] = yaml.safe_load(manifest_path.read_text()) or {}
 
     mat_c0 = assess(manifest, repo_root=repo_root, capability="C0")
     mat_c1 = assess(manifest, repo_root=repo_root, capability="C1")
@@ -224,13 +253,24 @@ def run_exp2(
 
     # ------------------------------------------------------------------
     # 6) data_quality — capability flag (C1 records QC; C0 ad-hoc does not)
+    # FIX 6: derive from emitted run_id field — not a bare bool(c1_ok).
+    # C1 (mlflow) emits a real UUID run_id → True when all successful runs have one.
+    # C0 (noop) emits run_id=None → False (noop has no persistent tracking store).
+    # This makes the flag falsifiable from run output, not a capability assertion.
     # ------------------------------------------------------------------
+    c1_quality_recorded = bool(c1_ok) and all(
+        r["result"].get("run_id") for r in c1_ok
+    )
+    c0_quality_recorded = bool(c0_ok) and all(
+        r["result"].get("run_id") for r in c0_ok
+    )
     data_quality: dict[str, Any] = {
-        "C1_quality_recorded": bool(c1_ok),
-        "C0_quality_recorded": False,
+        "C1_quality_recorded": c1_quality_recorded,
+        "C0_quality_recorded": c0_quality_recorded,
         "note": (
-            "C1 logs dataset hash + feature version to MLflow (governed); "
-            "C0/noop accepts log_dataset() calls but persists nothing."
+            "FIX6: derived from emitted run_id — C1 mlflow runs have a real UUID "
+            "run_id (governed, persisted); C0 noop runs emit run_id=None (not persisted). "
+            "C1 logs dataset hash + feature version to MLflow; C0/noop does not."
         ),
     }
 

@@ -53,6 +53,16 @@ def test_run_exp2_ablation(tmp_path):
     for group in ("model_perf", "operational", "resource", "maturity", "business", "data_quality"):
         assert group in summary, f"missing group: {group}"
 
+    # ---- FIX 3: verify both configs produced actual successful runs ----
+    # Without this, traceability/control assertions could be vacuously satisfied
+    # (e.g. traceable_C0=False because c0_ok is empty, not because noop was detected).
+    assert summary["n_c0_ok"] >= 1, (
+        f"C0 must have at least 1 successful run; got n_c0_ok={summary['n_c0_ok']}"
+    )
+    assert summary["n_c1_ok"] >= 1, (
+        f"C1 must have at least 1 successful run; got n_c1_ok={summary['n_c1_ok']}"
+    )
+
     # ---- operational: wilcoxon present ----
     assert "wilcoxon_wall_s" in summary["operational"]
 
@@ -65,11 +75,17 @@ def test_run_exp2_ablation(tmp_path):
     )
 
     # ---- model_perf is a CONTROL ----
-    assert summary["model_perf"]["control_equal"] in (True, False)
+    # control_equal is None only when no perf keys could be compared (no data).
+    # With n_c0_ok>=1 and n_c1_ok>=1 confirmed above, it must be True or False.
+    assert summary["model_perf"]["control_equal"] in (True, False), (
+        "control_equal must be True or False when both configs have successful runs; "
+        f"got {summary['model_perf']['control_equal']!r} — check that perf metrics are emitted"
+    )
 
     # ---- FIX 2: traceability genuinely distinguishes C0 from C1 ----
     # NoopTracker emits run_id=None + model_version=None -> traceable_C0 must be False.
     # MLflowTracker emits a real run_id UUID + models:/.../1 -> traceable_C1 must be True.
+    # With n_c0_ok>=1/n_c1_ok>=1 (asserted above) this is a real comparison, not vacuous.
     assert summary["maturity"]["traceable_C0"] is False, (
         "C0 (noop backend, run_id=None, model_version=None) must NOT be traceable"
     )
