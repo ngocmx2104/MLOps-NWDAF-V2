@@ -1,13 +1,14 @@
 # HANDOFF — Luận văn MLOps NWDAF (bàn giao cho agent session khác)
 
 > **Mục đích:** Bản tổng hợp đầy đủ để một AI agent ở session khác **nắm bối cảnh + bắt tay làm tiếp ngay**. Đọc file này TRƯỚC, rồi đọc `CLAUDE.md` (luật repo, auto-load) + `docs/THESIS_SPEC.md` (spec) + `docs/IMPLEMENTATION_PLAN.md` (roadmap).
-> **Cập nhật:** 2026-06-09. **Tiến độ:** **P0–P8a ĐÃ MERGE vào `main`** (P8a measurement foundation merged local; P7 đã push origin, CI+CD XANH). **P8b-1 (RQ3 spine) ĐÃ XONG trên branch `phase8b1`** — 13+ commit, 11 task subagent-driven, **đã chạy thật N=10 → SỐ LIỆU THẬT**. Kết quả (real D5, 8.393 UE-window):
-> - **Exp-1 (E2E quality):** ROC-AUC **0.926±0.006**, PR-AUC **0.676±0.025**; F1 0.091 (recall thấp ở ngưỡng contamination — rank-quality tốt, ngưỡng bảo thủ → động lực cost-sensitivity). N=10.
-> - **Exp-2 (ablation C0 vs C1, 6 nhóm):** model-perf **control_equal=True** (C0 KHÔNG straw-man); wall **3.20s→4.94s** (+1.74s, **Wilcoxon p=0.002<0.05**); RSS +115MB; storage **0→745KB**; **maturity 0.0→7.0**; **traceability False→True**. ⇒ *đánh đổi chi phí↔lợi ích định lượng*, KHÔNG "C1 thắng phát hiện".
-> - **Exp-3 (framework):** overhead vs noop — **MLflow +1.10s** wall/+116MB; ClearML +1.26s/+85MB; cả hai có registry+run_id. ⇒ biện minh chọn MLflow (overhead wall thấp hơn). (ClearML offline → registry id placeholder, note giới hạn.)
-> - **ML Test Score 28-test:** C1=**7.0** / C0=**0.0** (mọi điểm verify được; C0 zeroes requires_mlops). Bảng: `docs/results/phase8b1_tables.md`.
+> **Cập nhật:** 2026-06-09. **Tiến độ:** **P0–P8b-1 ĐÃ MERGE vào `main`** (P7 đã push origin, CI+CD XANH). **P8b-2 (RQ4) ĐÃ XONG trên branch `phase8b2`** (chờ merge) — đã chạy thật → **SỐ LIỆU THẬT đủ cả 4 RQ**.
+> **RQ3 (P8b-1, đã merge — real D5 8.393 window):** Exp-1 ROC-AUC **0.926±0.006**; Exp-2 ablation C0vsC1 control_equal=True, wall +1.74s (**Wilcoxon p=0.002**), **maturity 0→7.0**, traceability F→T (*đánh đổi chi phí↔lợi ích*); Exp-3 MLflow overhead +1.10s < ClearML +1.26s; ML Test Score C1=7.0/C0=0.0. Bảng `docs/results/phase8b1_tables.md`.
+> **RQ4 (P8b-2):**
+> - **Exp-4 (drift+retrain ON/OFF):** sudden+gradual **detect** (latency 3) + auto-retrain ON=2/OFF=0; recurring **không detect** (giới hạn windowed-PSI cyclic drift — trung thực). ⇒ RQ4a **PARTIAL** (2/3, closed-loop chứng minh hoạt động). *(Đã fix harness: step drift theo thứ tự thời gian, không random — gradual từng bị false-negative.)*
+> - **Exp-5 (swap IForest↔LSTM-AE):** **LSTM-AE ROC-AUC 0.948 > IForest 0.926** (PR-AUC 0.779>0.676, F1 0.33>0.09; **Wilcoxon p=0.010**) nhưng train 2× chậm; **swap_core_changes=0**. ⇒ RQ4b **PASS** (so sánh định lượng + linh hoạt 0-cost; §9.7 fix: LSTM cùng split).
+> - **Exp-6 (modifiability):** 3 mod handover (thêm feature / đổi rule ping-pong / đổi ngưỡng PSI) — mỗi mod **1 file, 0 regression** (guard breaking-mod chống false-pass; repo sạch sau chạy). ⇒ RQ4c **PASS**. Bảng `docs/results/phase8b2_tables.md`.
 >
-> P8b-1 dùng **real D5 + synthetic** (defer `raw_data` full → P8b-2). Spec/plan: `docs/superpowers/specs/2026-06-09-phase8b1-rq3-design.md`, `docs/plans/2026-06-09-phase8b1-rq3.md`. **▶ HÀNH ĐỘNG NGAY: (1) merge `phase8b1` → main (HV chọn); (2) execute P8b-2** — Exp-4 (drift+retrain), Exp-5 (model-swap), Exp-6 (modifiability) + `raw_data` full run + bảng LaTeX. Sau P8b-2: P9 (viết luận văn).
+> Spec/plan P8b-2: `docs/superpowers/specs/2026-06-09-phase8b2-rq4-design.md`, `docs/plans/2026-06-09-phase8b2-rq4.md`. **▶ HÀNH ĐỘNG NGAY: (1) merge `phase8b2` → main (HV chọn); (2) P9 — VIẾT LUẬN VĂN** (đủ số liệu 4 RQ; skill `academic-pipeline`, điền số thật từ `docs/results/` + `artifacts/experiments/`). raw_data full KHÔNG cần (synthetic=thật, HV quyết).
 
 ---
 
@@ -113,8 +114,8 @@ Cơ sở học thuật (có trích dẫn đã verify): `docs/research/METHODOLOG
 | **P6** | Monitoring + auto-retrain | C8 | ✅ merged — T1–T7, PSI 3 tầng+Evidently, closed-loop drift→retrain→reload, `/metrics`; final review OK |
 | **P7** | CI/CD | C1 | ✅ **merged `main` + pushed; CI+CD GitHub Actions XANH** — `ci.yml`+`cd-pipeline.yml`+`retrain.yml`; eval-gate `src/cicd/` (governance candidate→staging); DVC `fixture/train/eval` DAG; MLflow server + Prometheus/Grafana compose (smoke-local); §9.10/§9.13 xử lý. Plan: `docs/plans/2026-06-08-phase7-cicd.md`, spec: `docs/superpowers/specs/2026-06-08-phase7-cicd-design.md` |
 | **P8a** | Measurement foundation | đánh giá | ✅ **MERGED `main`** — `src/experiments/` harness + 6 collector + Wilcoxon/CI + **ML Test Score assessor** (evidence auto-verify) + provenance §9.6. Plan: `docs/plans/2026-06-09-phase8a-foundation.md` |
-| **P8b-1** | RQ3 spine | đánh giá | ✅ **xong branch `phase8b1`** (chờ merge) — Exp-1/2/3 + ML Test Score 28-test; **chạy thật N=10 → số liệu thật** (ROC-AUC 0.926; ablation Wilcoxon p=0.002, maturity 0→7; MLflow overhead +1.10s). Bảng: `docs/results/phase8b1_tables.md`. Plan: `docs/plans/2026-06-09-phase8b1-rq3.md` |
-| **P8b-2** | RQ4 + result tables | đánh giá | ⬜ chưa — Exp-4 (drift+retrain), Exp-5 (model-swap), Exp-6 (modifiability) + **`raw_data` full (~60min)** + bảng LaTeX |
+| **P8b-1** | RQ3 spine | đánh giá | ✅ **MERGED `main`** — Exp-1/2/3 + ML Test Score 28-test; số liệu thật N=10 (ROC-AUC 0.926; ablation Wilcoxon p=0.002, maturity 0→7; MLflow overhead +1.10s). Bảng: `docs/results/phase8b1_tables.md` |
+| **P8b-2** | RQ4 | đánh giá | ✅ **xong branch `phase8b2`** (chờ merge) — Exp-4 (sudden+gradual detect+retrain ON/OFF, recurring=limit), Exp-5 (LSTM-AE 0.948>0.926 Wilcoxon p=0.010, swap 0-core), Exp-6 (3 mod handover 1 file/0 regression). RQ4a PARTIAL · RQ4b/c PASS. Bảng: `docs/results/phase8b2_tables.md`. Plan: `docs/plans/2026-06-09-phase8b2-rq4.md` |
 | **P9** | Viết luận văn | — | ⬜ chưa — LaTeX, dùng skill `academic-pipeline`; điền số liệu thật |
 
 **Mapping Exp → RQ → Phase cần:** Exp-1 E2E (RQ1,2; P1–P5) · Exp-2 ablation C0vsC1 (RQ2,3; P4,7,8) · Exp-3 framework MLflow/ClearML/Noop (RQ3; P4,8) · Exp-4 drift+retrain (RQ4; P2,6) · Exp-5 model-swap IForest↔LSTM-AE (RQ4; P4) · Exp-6 modifiability (RQ4; P3,6,8) · Maturity ML Test Score xuyên suốt (RQ3; P7,8).
@@ -198,10 +199,9 @@ Commit code: `bda1b0d` torch deps · `b5045c8` MLflowTracker · `c1f2dd2` ClearM
 
 ## 10. BẮT TAY LÀM TIẾP — hành động cụ thể ngay
 
-1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase8b1 && pytest -q && ruff check .` → xác nhận xanh (P8b-1 trên branch `phase8b1`, chưa merge). `git log --oneline main..HEAD` xem commit P8b-1. (Nếu đã merge + xóa thì `git checkout main`.) Số liệu thật: `docs/results/phase8b1_tables.md` + `artifacts/experiments/exp{1,2,3}/*_summary.json` (gitignored, chạy lại bằng `python -m src.experiments run-exp{1,2,3} ...`).
-2. **Merge P8b-1** (HV chọn): `git checkout main && git merge phase8b1` (local fast-forward) → verify `pytest -q` → `git branch -d phase8b1`. Push khi HV yêu cầu.
-3. **Bắt đầu P8b-2 (RQ4 + result tables)** — theo flow §4: viết plan `docs/plans/<date>-phase8b2-*.md` → branch `phase8b2` từ main → subagent-driven. Nội dung: **Exp-4** (drift+retrain, sudden/gradual/recurring), **Exp-5** (model-swap IForest↔LSTM-AE), **Exp-6** (modifiability: số module chạm/dòng đổi/regression) + `raw_data` full run (~60min, §9.1) + bảng LaTeX hoàn chỉnh. **Nợ kỹ thuật xử ở P8b-2:** §9 mục 7–8 (LSTM data-path + lineage), 14 (Exp-4 harness window quản clock kịch bản). Port `exp3_drift.py`/`exp4_model_swap.py` cũ `MLOps_Project/src/experiments/` (đã có hạ tầng P8a/P8b-1, chỉ nạp kịch bản). (§9 mục 15 → P9.) Dùng `src/experiments/exp_common.py` (`ConfigSpec`/`run_experiment`) + `tables.py` đã có.
-4. **P9 viết luận văn:** dùng skill `academic-pipeline`/`academic-paper`; điền **số liệu thật** từ `artifacts/`; bám `vietnamese_thesis_style_guide.md` (port từ repo cũ); LaTeX template port từ `MLOps_Project/Template_thesis_master/`.
+1. `cd "/Users/ngocmx/Thạc Sĩ/MLOps_Thesis_Ver2" && source .venv/bin/activate && git checkout phase8b2 && pytest -q && ruff check .` → xác nhận xanh (P8b-2 trên branch `phase8b2`, chưa merge). `git log --oneline main..HEAD` xem commit P8b-2. (Nếu đã merge + xóa thì `git checkout main`.) Số liệu thật: `docs/results/phase8b{1,2}_tables.md` + `artifacts/experiments/exp{1..6}/*_summary.json` (gitignored, chạy lại bằng `python -m src.experiments run-exp{1..6} ...`).
+2. **Merge P8b-2** (HV chọn): `git checkout main && git merge phase8b2` (local fast-forward) → verify `pytest -q` → `git branch -d phase8b2`. Push khi HV yêu cầu (main ahead origin nhiều commit P8a→P8b-2).
+3. **P9 — VIẾT LUẬN VĂN (việc chính còn lại):** dùng skill `academic-pipeline`/`academic-paper`; điền **số liệu thật** từ `docs/results/phase8b{1,2}_tables.md` + `artifacts/experiments/` (4 RQ đủ số: RQ1/2 Exp-1, RQ3 Exp-2/3+maturity, RQ4 Exp-4/5/6); bám `vietnamese_thesis_style_guide.md`; LaTeX template port `MLOps_Project/Template_thesis_master/`. **Nêu trung thực giới hạn:** recurring drift chưa detect (RQ4a); LSTM-AE seq_len=1 (vector tĩnh, không chuỗi thật); synthetic drift coi là thật (HV quyết); §9 mục 15 (biện minh PSI threshold). raw_data full KHÔNG cần.
 
 ---
 
